@@ -76,7 +76,7 @@ If you encounter a segmentation fault on Linux with NVIDIA graphics:
 export SDL_VIDEODRIVER=x11
 ```
 
-Or add this line at the top of your \`~/.bashrc\`:
+Or add this line at the top of your `~/.bashrc`:
 
 ```bash
 echo 'export SDL_VIDEODRIVER=x11' >> ~/.bashrc
@@ -151,7 +151,7 @@ Each creature possesses a neural network that receives sensory inputs and produc
 
 ## ⚙️ Configuration
 
-All simulation parameters can be adjusted in \`config/config.yaml\`:
+All simulation parameters can be adjusted in `config/config.yaml`:
 
 ### Display Settings
 
@@ -233,14 +233,14 @@ evolution-sim/
 
 | Key | Action |
 |-----|--------|
-| \`SPACE\` | Pause/Resume simulation |
-| \`ESC\` | Quit simulation |
+| `SPACE` | Pause/Resume simulation |
+| `ESC` | Quit simulation |
 
 ## 🔬 Advanced Usage
 
 ### Customizing Creature Behavior
 
-Edit \`src/evolution_sim/core/creature.py\` to modify how creatures interpret their neural network outputs:
+Edit `src/evolution_sim/core/creature.py` to modify how creatures interpret their neural network outputs:
 
 ```python
 def think_and_act(self, environment):
@@ -252,7 +252,7 @@ def think_and_act(self, environment):
 
 ### Adding New Sensory Inputs
 
-Extend the \`get_inputs()\` method in \`Creature\` class:
+Extend the `get_inputs()` method in `Creature` class:
 
 ```python
 def get_inputs(self, environment):
@@ -262,7 +262,7 @@ def get_inputs(self, environment):
     return inputs
 ```
 
-Remember to update \`config.yaml\` to reflect the new input count.
+Remember to update `config.yaml` to reflect the new input count.
 
 ## 🧪 Testing
 
@@ -280,19 +280,19 @@ pytest --cov=evolution_sim --cov-report=html
 
 ## 📊 Performance Tips
 
-- Reduce \`fps\` in config for faster evolution
-- Lower \`window_width\` and \`window_height\` for better performance
-- Decrease \`initial_plants\` for simpler ecosystems
-- Adjust \`max_neurons\` to limit network complexity
+- Reduce `fps` in config for faster evolution
+- Lower `window_width` and `window_height` for better performance
+- Decrease `initial_plants` for simpler ecosystems
+- Adjust `max_neurons` to limit network complexity
 
 ## 🤝 Contributing
 
 Contributions are welcome! Please follow these steps:
 
 1. Fork the repository
-2. Create a feature branch (\`git checkout -b feature/amazing-feature\`)
-3. Commit your changes (\`git commit -m 'Add amazing feature'\`)
-4. Push to the branch (\`git push origin feature/amazing-feature\`)
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
 ### Development Setup
@@ -328,7 +328,7 @@ export SDL_VIDEODRIVER=x11
 
 ### Slow Performance
 
-- Lower the FPS in \`config.yaml\`
+- Lower the FPS in `config.yaml`
 - Reduce creature population
 - Decrease window size
 
