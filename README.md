@@ -1,4 +1,3 @@
-cat > README.md << 'EOF'
 # Neural Evolution Ecosystem Simulation 🧬
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
@@ -40,14 +39,14 @@ A real-time evolutionary simulation where creatures with neural network brains e
 
 1. **Clone the repository**
 
-\`\`\`bash
+```bash
 git clone https://github.com/PierreMrt/evolution-sim.git
 cd evolution-sim
-\`\`\`
+```
 
 2. **Create and activate a virtual environment**
 
-\`\`\`bash
+```bash
 # On Linux/Mac
 python -m venv .venv
 source .venv/bin/activate
@@ -55,33 +54,33 @@ source .venv/bin/activate
 # On Windows
 python -m venv .venv
 .venv\Scripts\activate
-\`\`\`
+```
 
 3. **Install the package**
 
-\`\`\`bash
+```bash
 pip install -e .
-\`\`\`
+```
 
 4. **Install development dependencies (optional)**
 
-\`\`\`bash
+```bash
 pip install -e ".[dev]"
-\`\`\`
+```
 
 ### Fix for Linux/NVIDIA Users
 
 If you encounter a segmentation fault on Linux with NVIDIA graphics:
 
-\`\`\`bash
+```bash
 export SDL_VIDEODRIVER=x11
-\`\`\`
+```
 
 Or add this line at the top of your \`~/.bashrc\`:
 
-\`\`\`bash
+```bash
 echo 'export SDL_VIDEODRIVER=x11' >> ~/.bashrc
-\`\`\`
+```
 
 ## 🎮 Quick Start
 
@@ -89,16 +88,16 @@ echo 'export SDL_VIDEODRIVER=x11' >> ~/.bashrc
 
 After installation, run the simulation with:
 
-\`\`\`bash
+```bash
 evolution-sim
-\`\`\`
+```
 
 Or navigate to the source directory:
 
-\`\`\`bash
+```bash
 cd src/evolution_sim
 python main.py
-\`\`\`
+```
 
 ### What You'll See
 
@@ -156,46 +155,46 @@ All simulation parameters can be adjusted in \`config/config.yaml\`:
 
 ### Display Settings
 
-\`\`\`yaml
+```yaml
 display:
   window_width: 1200
   window_height: 800
   fps: 60
-\`\`\`
+```
 
 ### Evolution Parameters
 
-\`\`\`yaml
+```yaml
 evolution:
   mutation_rate: 0.3              # Probability of mutation
   add_neuron_rate: 0.05           # Chance to add new neuron
   remove_neuron_rate: 0.03        # Chance to remove neuron
   weight_mutation_strength: 0.3   # Magnitude of weight changes
-\`\`\`
+```
 
 ### Population Settings
 
-\`\`\`yaml
+```yaml
 creatures:
   initial_herbivores: 10
   initial_carnivores: 5
   max_energy: 100
   reproduction_energy_threshold: 70
-\`\`\`
+```
 
 ### Neural Network Configuration
 
-\`\`\`yaml
+```yaml
 neural_network:
   input_neurons: 8
   output_neurons: 3
   max_neurons: 20
   vision_range: 150
-\`\`\`
+```
 
 ## 📁 Project Structure
 
-\`\`\`
+```
 evolution-sim/
 ├── README.md                    # This file
 ├── LICENSE                      # MIT License
@@ -228,7 +227,7 @@ evolution-sim/
 │   ├── test_creature.py
 │   └── test_evolution.py
 └── docs/                       # Documentation
-\`\`\`
+```
 
 ## 🎯 Controls
 
@@ -243,25 +242,25 @@ evolution-sim/
 
 Edit \`src/evolution_sim/core/creature.py\` to modify how creatures interpret their neural network outputs:
 
-\`\`\`python
+```python
 def think_and_act(self, environment):
     outputs = self.genome.network.forward(inputs)
     move_x = (outputs[0] - 0.5) * 2 * 3  # Adjust speed multiplier
     move_y = (outputs[1] - 0.5) * 2 * 3
     action = outputs[2] > 0.5  # Adjust threshold
-\`\`\`
+```
 
 ### Adding New Sensory Inputs
 
 Extend the \`get_inputs()\` method in \`Creature\` class:
 
-\`\`\`python
+```python
 def get_inputs(self, environment):
     inputs = [1.0]  # Bias
     inputs.append(self.energy / max_energy)
     # Add your custom inputs here
     return inputs
-\`\`\`
+```
 
 Remember to update \`config.yaml\` to reflect the new input count.
 
@@ -269,15 +268,15 @@ Remember to update \`config.yaml\` to reflect the new input count.
 
 Run the test suite:
 
-\`\`\`bash
+```bash
 pytest
-\`\`\`
+```
 
 Run with coverage:
 
-\`\`\`bash
+```bash
 pytest --cov=evolution_sim --cov-report=html
-\`\`\`
+```
 
 ## 📊 Performance Tips
 
@@ -298,10 +297,10 @@ Contributions are welcome! Please follow these steps:
 
 ### Development Setup
 
-\`\`\`bash
+```bash
 pip install -e ".[dev]"
 pre-commit install
-\`\`\`
+```
 
 ### Code Style
 
@@ -312,20 +311,20 @@ This project uses:
 
 Run before committing:
 
-\`\`\`bash
+```bash
 black src/
 flake8 src/
 mypy src/
-\`\`\`
+```
 
 ## 🐛 Troubleshooting
 
 ### Segmentation Fault (Linux)
 
 Set the SDL video driver:
-\`\`\`bash
+```bash
 export SDL_VIDEODRIVER=x11
-\`\`\`
+```
 
 ### Slow Performance
 
@@ -336,9 +335,9 @@ export SDL_VIDEODRIVER=x11
 ### Import Errors
 
 Make sure you installed the package:
-\`\`\`bash
+```bash
 pip install -e .
-\`\`\`
+```
 
 ## 🗺️ Roadmap
 
