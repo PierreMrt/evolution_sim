@@ -19,17 +19,18 @@ class Renderer:
         self.screen = pygame.display.set_mode((width, height))
         pygame.display.set_caption("Neural Evolution Ecosystem")
         
-    def draw(self, environment: 'Environment') -> None:
+    def draw(self, environment: 'Environment', selected_creature=None) -> None:
         """
         Render the current simulation state.
         
         Args:
             environment: The environment to render
+            selected_creature: Currently selected creature to highlight
         """
         self.screen.fill((20, 30, 20))  # Dark green background
-        
         self._draw_plants(environment)
-        self._draw_creatures(environment)
+        self._draw_creatures(environment, selected_creature)
+
     
     def _draw_plants(self, environment: 'Environment') -> None:
         """Draw all plants."""
@@ -75,3 +76,55 @@ class Renderer:
                     (0, 255, 0), 
                     (bar_x, bar_y, bar_width * energy_ratio, bar_height)
                 )
+
+    def _draw_creatures(self, environment: 'Environment', selected_creature=None) -> None:
+        """Draw all creatures with energy bars."""
+        max_energy = config.get('creatures.max_energy')
+        
+        for creature in environment.creatures:
+            if creature.alive:
+                # Determine color
+                if creature == selected_creature:
+                    color = (255, 255, 0)  # Yellow for selected
+                elif creature.creature_type == 'herbivore':
+                    color = (100, 150, 255)
+                else:
+                    color = (255, 100, 100)
+                
+                # Draw creature
+                pygame.draw.circle(
+                    self.screen,
+                    color,
+                    (int(creature.x), int(creature.y)),
+                    creature.radius
+                )
+                
+                # Draw selection ring
+                if creature == selected_creature:
+                    pygame.draw.circle(
+                        self.screen,
+                        (255, 255, 0),
+                        (int(creature.x), int(creature.y)),
+                        creature.radius + 5,
+                        2
+                    )
+                
+                # Draw energy bar
+                energy_ratio = creature.energy / max_energy
+                bar_width = creature.radius * 2
+                bar_height = 3
+                bar_x = creature.x - creature.radius
+                bar_y = creature.y - creature.radius - 5
+                
+                pygame.draw.rect(
+                    self.screen,
+                    (100, 100, 100),
+                    (bar_x, bar_y, bar_width, bar_height)
+                )
+                
+                pygame.draw.rect(
+                    self.screen,
+                    (0, 255, 0),
+                    (bar_x, bar_y, bar_width * energy_ratio, bar_height)
+                )
+

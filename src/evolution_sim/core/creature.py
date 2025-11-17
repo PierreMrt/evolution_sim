@@ -15,7 +15,7 @@ class Creature:
     
     _id_counter = 0
     
-    def __init__(self, x: float, y: float, genome: Genome, brain=None):
+    def __init__(self, x: float, y: float, genome: Genome, brain=None, parent_id=None, generation=0):
         """
         Initialize a creature.
         
@@ -23,6 +23,9 @@ class Creature:
             x: Initial x position
             y: Initial y position
             genome: Genetic information
+            brain: Optional pre-built brain
+            parent_id: ID of parent creature
+            generation: Generation number
         """
         self.id = Creature._id_counter
         Creature._id_counter += 1
@@ -32,10 +35,17 @@ class Creature:
         self.genome = genome
         self.creature_type = genome.creature_type
         
+        self.parent_id = parent_id
+        self.generation = generation
+        self.birth_time = 0 
+        self.death_time = None
+        self.children_count = 0
+        
         max_energy = config.get('creatures.max_energy')
         self.energy = max_energy * 0.5
         self.age = 0
         self.alive = True
+        self.direction = random.uniform(0, 2 * math.pi)
         
         if self.creature_type == 'herbivore':
             self.radius = config.get('creatures.herbivore_radius')
@@ -44,13 +54,9 @@ class Creature:
         
         self.food_eaten = 0
         self.distance_traveled = 0.0
-
-         # Create or assign brain
-        if brain is None:
-            # Default neural network: 3 inputs -> 5 hidden -> 2 outputs
-            self.brain = NeuralNetwork([3, 5, 2])
-        else:
-            self.brain = brain
+        
+        # Use genome's network
+        self.brain = genome.network
         
     def get_inputs(self, environment: 'Environment') -> List[float]:
         """
@@ -89,26 +95,36 @@ class Creature:
     
 
     def _find_nearest(self, entities):
-        """Find nearest entity from a list"""
+        """Find nearest entity from a list and return direction/distance"""
         if not entities:
-            return None, float('inf')
+            return [0.0, 0.0]  # Return normalized vector instead of tuple
         
         nearest = None
         min_dist = float('inf')
         
         for entity in entities:
-            # Fix: properly extract coordinates
+            # Properly extract coordinates
             if hasattr(entity, 'x'):
-                ex, ey = entity.x, entity.y  # Get both x and y attributes
+                ex, ey = entity.x, entity.y
             else:
-                ex, ey = entity[0], entity[1]  # Get from tuple/list
+                ex, ey = entity[0], entity[1]
             
             dist = math.sqrt((self.x - ex)**2 + (self.y - ey)**2)
             if dist < min_dist:
                 min_dist = dist
-                nearest = entity
+                nearest = (ex, ey)
         
-        return nearest, min_dist
+        if nearest is None:
+            return [0.0, 0.0]
+        
+        # Return normalized direction vector
+        dx = nearest[0] - self.x
+        dy = nearest[1] - self.y
+        dist = math.sqrt(dx**2 + dy**2)
+        
+        if dist > 0:
+            return [dx/dist, dy/dist]  # Normalized direction
+        return [0.0, 0.0]
     
 
     def think_and_act(self, environment):
@@ -133,12 +149,13 @@ class Creature:
         self.y += dy
         
         # Wrap around screen edges
-        from evolution_sim.config import WORLD_WIDTH, WORLD_HEIGHT
-        self.x = self.x % WORLD_WIDTH
-        self.y = self.y % WORLD_HEIGHT
+        world_width = config.get('world.width')
+        world_height = config.get('world.height')
+        self.x = self.x % world_width
+        self.y = self.y % world_height
         
         # Use energy for movement
-        self.energy -= abs(speed) * 0.1 + abs(turn) * 0.05
+        self.energy -= abs(speed) * 0.05 + abs(turn) * 0.03
     
     def _move(self, dx: float, dy: float) -> None:
         """Move the creature and consume energy."""
@@ -231,7 +248,18 @@ class Creature:
         offspring_genome = self.genome.copy()
         offspring_genome.mutate()
         
+        # Track offspring
+        self.children_count += 1
+        
         # Spawn near parent
         offset_x = random.uniform(-30, 30)
         offset_y = random.uniform(-30, 30)
-        return Creature(self.x + offset_x, self.y + offset_y, offspring_genome)
+        
+        # Pass generation and parent info
+        return Creature(
+            self.x + offset_x, 
+            self.y + offset_y, 
+            offspring_genome,
+            parent_id=self.id,
+            generation=self.generation + 1
+        )

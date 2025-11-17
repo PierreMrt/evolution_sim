@@ -79,6 +79,7 @@ class Environment:
         for creature in self.creatures:
             if creature.alive:
                 creature.think_and_act(self)
+                creature.try_eat(self)  # Make sure this is here
                 creature.update()
         
         # Handle reproduction
@@ -90,8 +91,14 @@ class Environment:
         
         self.creatures.extend(new_creatures)
         
+        # Track deaths before removing
+        dead_creatures = [c for c in self.creatures if not c.alive]
+        
         # Remove dead creatures
         self.creatures = [c for c in self.creatures if c.alive]
+        
+        # Return dead creatures so Simulation can register them
+        self.dead_this_frame = dead_creatures
         
         # Grow plants
         growth_rate = config.get('world.plant_growth_rate')
@@ -101,6 +108,7 @@ class Environment:
         
         # Prevent extinction
         self._prevent_extinction()
+
     
     def _prevent_extinction(self) -> None:
         """Spawn new creatures if population is too low."""

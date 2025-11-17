@@ -17,7 +17,7 @@ class Neuron:
         self.id = neuron_id
         self.type = neuron_type
         self.value = 0.0
-        self.bias = random.uniform(-1, 1)
+        self.bias = random.uniform(-2, 2)
     
     def activate(self, x: float) -> float:
         """
