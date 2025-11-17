@@ -8,6 +8,8 @@ if TYPE_CHECKING:
     from ..environment.world import Environment
     from ..evolution.evolution_tracker import EvolutionTracker
 
+from .network_visualizer import NetworkVisualizer
+
 class StatsDisplay:
     """Displays simulation statistics with evolutionary tracking."""
     
@@ -31,6 +33,8 @@ class StatsDisplay:
         # Clickable areas
         self.oldest_creature_rect = None
         self.oldest_creature = None
+        
+        self.network_visualizer = NetworkVisualizer()
     
     def update(self, environment: 'Environment') -> None:
         """
@@ -86,8 +90,30 @@ class StatsDisplay:
         # Draw selected creature info
         if self.selected_creature and self.selected_creature.alive:
             self._draw_creature_info(self.selected_creature)
+            
+            # ADD THIS: Draw neural network visualization
+            self._draw_selected_network()
         
         self.frame += 1
+    
+    def _draw_selected_network(self) -> None:
+        """Draw the neural network of the selected creature."""
+        if not self.selected_creature or not self.selected_creature.alive:
+            return
+        
+        # Position in top-right area
+        screen_width = self.screen.get_width()
+        x = screen_width - 450
+        y = 280
+        width = 430
+        height = 350
+        
+        self.network_visualizer.draw_network(
+            self.screen,
+            self.selected_creature.genome.network,
+            x, y, width, height
+        )
+
     
     def _draw_oldest_creature_box(self) -> None:
         """Draw clickable box showing the oldest creature."""
