@@ -1,0 +1,41 @@
+display:
+  window_width: 1200
+  window_height: 800
+  fps: 60
+
+world:
+  width: 1200
+  height: 800
+  initial_plants: 100
+  plant_growth_rate: 0.5
+  plant_energy: 30
+
+creatures:
+  initial_herbivores: 10
+  initial_carnivores: 5
+  max_energy: 100
+  move_energy_cost: 0.1
+  reproduction_energy_threshold: 70
+  reproduction_cost: 40
+  herbivore_radius: 8
+  carnivore_radius: 10
+
+neural_network:
+  input_neurons: 8
+  output_neurons: 3
+  max_neurons: 20
+  vision_range: 150
+
+evolution:
+  mutation_rate: 0.3
+  add_neuron_rate: 0.05
+  remove_neuron_rate: 0.03
+  add_connection_rate: 0.1
+  weight_mutation_rate: 0.8
+  weight_mutation_strength: 0.3
+  species_divergence_threshold: 3.0
+  tournament_size: 3
+  elite_count: 2
+  survival_rate: 0.5
+  stagnation_limit: 15
+
