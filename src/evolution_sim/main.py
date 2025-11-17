@@ -44,9 +44,16 @@ class Simulation:
             
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left click
-                    # Select creature at mouse position
                     mouse_x, mouse_y = event.pos
-                    self._select_creature_at(mouse_x, mouse_y)
+                    
+                    # Check if click was on stats display first
+                    if self.stats_display.handle_click(event.pos):
+                        # Stats handled the click
+                        self.selected_creature = self.stats_display.selected_creature
+                    else:
+                        # Try to select creature at mouse position
+                        self._select_creature_at(mouse_x, mouse_y)
+
     
     def _select_creature_at(self, x: int, y: int) -> None:
         """Select a creature at the given position."""
