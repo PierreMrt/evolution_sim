@@ -40,9 +40,26 @@ class Environment:
             self._spawn_plant()
     
     def _spawn_plant(self) -> None:
-        """Spawn a new plant at a random location."""
-        x = random.uniform(10, config.get('world.width') - 10)
-        y = random.uniform(10, config.get('world.height') - 10)
+        """Spawn a plant, possibly near other plants (clustering)."""
+        world_width = config.get('world.width')
+        world_height = config.get('world.height')
+        
+        # 60% chance to spawn near existing plant (cluster)
+        if self.plants and random.random() < 0.6:
+            # Pick a random existing plant
+            base_plant = random.choice(self.plants)
+            # Spawn nearby (within 100 pixels)
+            x = base_plant[0] + random.uniform(-100, 100)
+            y = base_plant[1] + random.uniform(-100, 100)
+            
+            # Clamp to world bounds
+            x = max(10, min(world_width - 10, x))
+            y = max(10, min(world_height - 10, y))
+        else:
+            # Random location
+            x = random.uniform(10, world_width - 10)
+            y = random.uniform(10, world_height - 10)
+        
         self.plants.append((x, y))
     
     def get_prey(self, creature: Creature) -> List[Creature]:
