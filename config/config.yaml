@@ -20,20 +20,20 @@ display:
 world:
   width: 1220           # Matches viewport width
   height: 1080          # Matches viewport height
-  initial_plants: 150
-  plant_growth_rate: 0.01
+  initial_plants: 250
+  plant_growth_rate: 0.1
   plant_energy: 30
 
 
 creatures:
-  initial_herbivores: 10
-  initial_carnivores: 5
+  initial_herbivores: 15
+  initial_carnivores: 7
   max_energy: 100
   move_energy_cost: 0.1
   reproduction_energy_threshold: 70
-  reproduction_cost: 40
-  herbivore_radius: 8
-  carnivore_radius: 10
+  reproduction_cost: 35
+  herbivore_radius: 10
+  carnivore_radius: 12
 
 neural_network:
   input_neurons: 8
@@ -43,7 +43,7 @@ neural_network:
 
 evolution:
   mutation_rate: 0.3
-  add_neuron_rate: 0.05
+  add_neuron_rate: 0.07
   remove_neuron_rate: 0.03
   add_connection_rate: 0.1
   weight_mutation_rate: 0.8

@@ -155,7 +155,7 @@ class Creature:
         self.y = self.y % world_height
         
         # Use energy for movement
-        self.energy -= abs(speed) * 0.05 + abs(turn) * 0.03
+        self.energy -= abs(speed) * 0.03 + abs(turn) * 0.02
     
     def _move(self, dx: float, dy: float) -> None:
         """Move the creature and consume energy."""
@@ -217,7 +217,7 @@ class Creature:
     def update(self) -> None:
         """Update creature state."""
         self.age += 1
-        self.energy -= 0.05  # Base metabolism
+        self.energy -= 0.03  # Base metabolism
         
         if self.energy <= 0:
             self.alive = False
