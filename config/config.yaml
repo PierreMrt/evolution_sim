@@ -1,14 +1,29 @@
 display:
-  window_width: 1200
-  window_height: 800
+  window_width: 1920    # Total window width
+  window_height: 1080   # Total window height
   fps: 60
+  
+  # Left panel (stats)
+  left_panel_x: 0
+  left_panel_width: 350
+  
+  # Center world viewport
+  world_x: 350          
+  world_y: 0
+  world_viewport_width: 1220   # Center area
+  world_viewport_height: 1080  # Full height
+  
+  # Right panel (selected creature)
+  right_panel_x: 1570   # Starts after world (350 + 1220)
+  right_panel_width: 350
 
 world:
-  width: 1200
-  height: 800
-  initial_plants: 100
-  plant_growth_rate: 0.5
+  width: 1220           # Matches viewport width
+  height: 1080          # Matches viewport height
+  initial_plants: 150
+  plant_growth_rate: 0.01
   plant_energy: 30
+
 
 creatures:
   initial_herbivores: 10

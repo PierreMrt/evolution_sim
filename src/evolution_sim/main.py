@@ -4,8 +4,9 @@ import pygame
 import math
 from evolution_sim.environment.world import Environment
 from evolution_sim.visualization.renderer import Renderer
-from evolution_sim.visualization.stats_display import StatsDisplay
-from evolution_sim.evolution.evolution_tracker import EvolutionTracker  # ADD THIS IMPORT
+from evolution_sim.visualization.left_panel import LeftPanel  # NEW
+from evolution_sim.visualization.right_panel import RightPanel  # NEW
+from evolution_sim.evolution.evolution_tracker import EvolutionTracker
 from evolution_sim.config import config
 
 class Simulation:
@@ -18,8 +19,9 @@ class Simulation:
         # CREATE TRACKER FIRST
         self.tracker = EvolutionTracker()
         
-        # Pass tracker to stats display
-        self.stats_display = StatsDisplay(self.renderer.screen, self.tracker)
+        # Create both panels
+        self.left_panel = LeftPanel(self.renderer.screen, self.tracker)
+        self.right_panel = RightPanel(self.renderer.screen)
         
         self.environment = Environment()
         
@@ -30,7 +32,7 @@ class Simulation:
         self.clock = pygame.time.Clock()
         self.running = True
         self.paused = False
-        self.selected_creature = None  # For clicking creatures
+        self.selected_creature = None
     
     def handle_events(self) -> None:
         """Handle user input."""
@@ -44,29 +46,37 @@ class Simulation:
             
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left click
-                    mouse_x, mouse_y = event.pos
-                    
-                    # Check if click was on stats display first
-                    if self.stats_display.handle_click(event.pos):
-                        # Stats handled the click
-                        self.selected_creature = self.stats_display.selected_creature
+                    # Check right panel first
+                    if self.right_panel.handle_click(event.pos):
+                        self.selected_creature = self.right_panel.selected_creature
                     else:
                         # Try to select creature at mouse position
-                        self._select_creature_at(mouse_x, mouse_y)
-
+                        self._select_creature_at(event.pos[0], event.pos[1])
     
     def _select_creature_at(self, x: int, y: int) -> None:
         """Select a creature at the given position."""
+        # Get world boundaries
+        world_rect = self.renderer.get_world_rect()
+        
+        # Check if click is inside world area
+        if not world_rect.collidepoint(x, y):
+            return
+        
+        # Convert screen coordinates to world coordinates
+        world_x = x - world_rect.x
+        world_y = y - world_rect.y
+        
         for creature in self.environment.creatures:
             if creature.alive:
-                dist = math.sqrt((creature.x - x)**2 + (creature.y - y)**2)
+                dist = math.sqrt((creature.x - world_x)**2 + (creature.y - world_y)**2)
                 if dist < creature.radius + 5:
                     self.selected_creature = creature
-                    self.stats_display.select_creature(creature)
+                    self.right_panel.select_creature(creature)
                     return
+        
         # If no creature clicked, deselect
         self.selected_creature = None
-        self.stats_display.select_creature(None)
+        self.right_panel.select_creature(None)
     
     def update(self) -> None:
         """Update simulation state."""
@@ -91,17 +101,22 @@ class Simulation:
             # Check if selected creature died
             if self.selected_creature and not self.selected_creature.alive:
                 self.selected_creature = None
-                self.stats_display.select_creature(None)
+                self.right_panel.select_creature(None)
             
             # Update tracker statistics
             self.tracker.update(self.environment)
-
     
     def render(self) -> None:
         """Render simulation."""
-        # Pass selected creature to renderer
+        # Draw world in center
         self.renderer.draw(self.environment, self.selected_creature)
-        self.stats_display.update(self.environment)
+        
+        # Draw left panel
+        self.left_panel.draw(self.environment, self.tracker.current_frame)
+        
+        # Draw right panel
+        self.right_panel.draw(self.environment)
+        
         pygame.display.flip()
     
     def run(self) -> None:

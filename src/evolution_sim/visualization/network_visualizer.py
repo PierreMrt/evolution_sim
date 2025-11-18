@@ -29,17 +29,6 @@ class NetworkVisualizer:
         if not network or not network.neurons:
             return
         
-        # Draw background panel
-        panel = pygame.Surface((width, height))
-        panel.set_alpha(200)
-        panel.fill((30, 30, 40))
-        screen.blit(panel, (x, y))
-        pygame.draw.rect(screen, (100, 100, 150), (x, y, width, height), 2)
-        
-        # Title
-        title = self.font.render("Neural Network", True, (200, 200, 255))
-        screen.blit(title, (x + 10, y + 5))
-        
         # Separate neurons by type
         input_neurons = [n for n in network.neurons.values() if n.type == 'input']
         hidden_neurons = [n for n in network.neurons.values() if n.type == 'hidden']
