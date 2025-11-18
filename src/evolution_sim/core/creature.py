@@ -16,17 +16,7 @@ class Creature:
     _id_counter = 0
     
     def __init__(self, x: float, y: float, genome: Genome, brain=None, parent_id=None, generation=0):
-        """
-        Initialize a creature.
-        
-        Args:
-            x: Initial x position
-            y: Initial y position
-            genome: Genetic information
-            brain: Optional pre-built brain
-            parent_id: ID of parent creature
-            generation: Generation number
-        """
+        """Initialize a creature."""
         self.id = Creature._id_counter
         Creature._id_counter += 1
         
@@ -42,18 +32,30 @@ class Creature:
         self.children_count = 0
         
         max_energy = config.get('creatures.max_energy')
-        self.energy = max_energy * 0.5
+        
+        # CARNIVORES START WITH MORE ENERGY
+        if self.creature_type == 'carnivore':
+            self.energy = max_energy * 0.7  # 70% energy (was 50%)
+        else:
+            self.energy = max_energy * 0.5  # 50% energy
+        
         self.age = 0
         self.alive = True
+        
+        # Random initial direction
         self.direction = random.uniform(0, 2 * math.pi)
         
+        # CARNIVORES ARE LARGER AND FASTER
         if self.creature_type == 'herbivore':
             self.radius = config.get('creatures.herbivore_radius')
+            self.speed_multiplier = 1.0  # Normal speed
         else:
             self.radius = config.get('creatures.carnivore_radius')
+            self.speed_multiplier = 1.2  
         
         self.food_eaten = 0
         self.distance_traveled = 0.0
+        self.eat_cooldown = 0
         
         # Use genome's network
         self.brain = genome.network
@@ -129,16 +131,15 @@ class Creature:
 
     def think_and_act(self, environment):
         """Process inputs through neural network and take action"""
-        # Get sensory inputs
         inputs = self.get_inputs(environment)
-        
-        # Process through brain
         outputs = self.brain.forward(inputs)
         
-        # Interpret outputs as actions
-        # outputs should have 2 values: [turn_amount, move_speed]
-        turn = outputs[0] * 0.2  # Scale turning
-        speed = outputs[1] * 2.0  # Scale movement speed
+        # Interpret outputs
+        turn = outputs[0] * 0.2
+        base_speed = outputs[1] * 2.0
+        
+        # Apply carnivore speed multiplier
+        speed = base_speed * self.speed_multiplier
         
         # Update direction and position
         self.direction += turn
@@ -154,8 +155,15 @@ class Creature:
         self.x = self.x % world_width
         self.y = self.y % world_height
         
-        # Use energy for movement
-        self.energy -= abs(speed) * 0.03 + abs(turn) * 0.02
+        # CARNIVORES PAY LESS ENERGY FOR MOVEMENT (efficient hunters)
+        if self.creature_type == 'carnivore':
+            self.energy -= abs(speed) * 0.02 + abs(turn) * 0.015
+        else:
+            self.energy -= abs(speed) * 0.03 + abs(turn) * 0.02
+        
+        # Try to eat
+        self.try_eat(environment)
+
     
     def _move(self, dx: float, dy: float) -> None:
         """Move the creature and consume energy."""

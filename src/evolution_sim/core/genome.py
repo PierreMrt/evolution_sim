@@ -32,11 +32,39 @@ class Genome:
         # Add output neurons
         for _ in range(output_neurons):
             self.network.add_neuron('output')
-        
-        # Connect inputs to outputs
+            
+        # Connect inputs to outputs with SPECIES-SPECIFIC biases
         for i in range(input_neurons):
             for o in range(input_neurons, input_neurons + output_neurons):
-                weight = random.uniform(-1, 1)
+                output_index = o - input_neurons
+                
+                # Determine weight based on input and output type
+                if self.creature_type == 'carnivore':
+                    # AGGRESSIVE CARNIVORE BIAS
+                    if i in [6, 7]:  # Prey direction inputs (inputs 6-7)
+                        if output_index == 0:  # Turn toward prey
+                            weight = random.uniform(2.0, 4.0)  # STRONG positive
+                        elif output_index == 1:  # Speed toward prey
+                            weight = random.uniform(2.0, 4.0)  # STRONG positive
+                        else:  # Sprint when hunting
+                            weight = random.uniform(1.0, 2.5)  # Strong positive
+                    else:
+                        # Other inputs have normal weights
+                        if output_index == 0:  # Turn
+                            weight = random.uniform(-0.5, 0.5)
+                        elif output_index == 1:  # Speed - forward bias
+                            weight = random.uniform(0.8, 2.0)
+                        else:
+                            weight = random.uniform(-1, 1)
+                else:
+                    # HERBIVORE - forward movement bias
+                    if output_index == 0:  # Turn - small weights
+                        weight = random.uniform(-0.5, 0.5)
+                    elif output_index == 1:  # Speed - forward bias
+                        weight = random.uniform(0.8, 2.0)
+                    else:
+                        weight = random.uniform(-1, 1)
+                
                 self.network.add_connection(i, o, weight)
     
     def mutate(self) -> None:
