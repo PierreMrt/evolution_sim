@@ -196,37 +196,59 @@ neural_network:
 
 ```
 evolution-sim/
-├── README.md                    # This file
-├── LICENSE                      # MIT License
-├── setup.py                     # Package configuration
-├── requirements.txt             # Python dependencies
+│
 ├── config/
-│   └── config.yaml             # Simulation parameters
-├── src/
-│   └── evolution_sim/
-│       ├── main.py             # Entry point
-│       ├── config.py           # Configuration loader
-│       ├── core/               # Core simulation logic
-│       │   ├── neural_network.py
-│       │   ├── genome.py
-│       │   └── creature.py
-│       ├── environment/        # World simulation
-│       │   ├── resources.py
-│       │   └── world.py
-│       ├── evolution/          # Genetic algorithms
-│       │   ├── mutation.py
-│       │   ├── selection.py
-│       │   └── species.py
-│       └── visualization/      # Graphics and UI
-│           ├── ui.py
-│           ├── renderer.py
-│           └── stats_display.py
-├── tests/                      # Unit tests
-│   ├── test_neural_network.py
-│   ├── test_genome.py
+│   └── config.yaml                    # Configuration parameters
+│
+├── src/evolution_sim/
+│   │
+│   ├── __init__.py                    # Package initialization
+│   ├── __main__.py                    # Entry point (python -m evolution_sim)
+│   ├── config.py                      # Configuration loader
+│   ├── main.py                        # Main simulation loop
+│   │
+│   ├── core/                          # Core domain entities
+│   │   ├── __init__.py
+│   │   ├── creature.py                # Creature class (behavior, senses, actions)
+│   │   ├── genome.py                  # Genetic encoding and mutations
+│   │   └── neural_network.py          # Neural network implementation
+│   │
+│   ├── environment/                   # World simulation
+│   │   ├── __init__.py
+│   │   ├── resources.py               # Plant/resource management
+│   │   └── world.py                   # Environment class (main simulation)
+│   │
+│   ├── evolution/                     # Evolutionary algorithms
+│   │   ├── __init__.py
+│   │   ├── evolution_tracker.py       # Track evolutionary progress
+│   │   ├── mutation.py                # Mutation operators
+│   │   ├── selection.py               # Selection algorithms
+│   │   └── species.py                 # Species/speciation logic
+│   │
+│   └── visualization/                 # UI and rendering
+│       ├── __init__.py
+│       ├── left_panel.py              # Population statistics panel
+│       ├── network_visualizer.py      # Neural network visualization
+│       ├── renderer.py                # Main world renderer
+│       ├── right_panel.py             # Creature inspector panel
+│       └── ui.py                      # UI orchestration
+│
+├── tests/                             # Unit tests
+│   ├── __init__.py
+│   ├── conftest.py                    # Pytest configuration
 │   ├── test_creature.py
-│   └── test_evolution.py
-└── docs/                       # Documentation
+│   ├── test_evolution.py
+│   ├── test_genome.py
+│   └── test_neural_network.py
+│
+├── docs/
+│   └── architecture.md                # Architecture documentation
+│
+├── .gitignore
+├── LICENCE
+├── README.md
+├── requirements.txt
+└── setup.py
 ```
 
 ## 🎯 Controls
