@@ -2,12 +2,22 @@
 
 import pygame
 import math
+import logging
 from evolution_sim.environment.world import Environment
 from evolution_sim.visualization.renderer import Renderer
-from evolution_sim.visualization.left_panel import LeftPanel  # NEW
-from evolution_sim.visualization.right_panel import RightPanel  # NEW
+from evolution_sim.visualization.left_panel import LeftPanel
+from evolution_sim.visualization.right_panel import RightPanel
 from evolution_sim.evolution.evolution_tracker import EvolutionTracker
+from evolution_sim.analysis import AnalysisFacade  # NEW IMPORT
 from evolution_sim.config import config
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 
 class Simulation:
     """Main simulation controller."""
@@ -25,6 +35,19 @@ class Simulation:
         
         self.environment = Environment()
         
+        # Initialize analysis logger (NEW)
+        try:
+            self.analysis_logger = AnalysisFacade(
+                output_base_dir="simulation_data",
+                buffer_size=300,
+                global_interval=10,
+                snapshot_interval=50
+            )
+            logger.info("Analysis logging enabled")
+        except Exception as e:
+            logger.warning(f"Analysis logging disabled: {e}")
+            self.analysis_logger = None
+        
         # Register initial population
         for creature in self.environment.creatures:
             self.tracker.register_birth(creature)
@@ -33,6 +56,7 @@ class Simulation:
         self.running = True
         self.paused = False
         self.selected_creature = None
+        self.current_frame = 0  # NEW: Track frame number
     
     def handle_events(self) -> None:
         """Handle user input."""
@@ -43,6 +67,8 @@ class Simulation:
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     self.paused = not self.paused
+                elif event.key == pygame.K_ESCAPE:  # NEW: ESC to quit
+                    self.running = False
             
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left click
@@ -105,6 +131,12 @@ class Simulation:
             
             # Update tracker statistics
             self.tracker.update(self.environment)
+            
+            # Log analysis data (NEW)
+            if self.analysis_logger:
+                self.analysis_logger.log_frame(self.current_frame, self.environment)
+            
+            self.current_frame += 1
     
     def render(self) -> None:
         """Render simulation."""
@@ -123,18 +155,26 @@ class Simulation:
         """Main simulation loop."""
         fps = config.get('display.fps')
         
-        while self.running:
-            self.handle_events()
-            self.update()
-            self.render()
-            self.clock.tick(fps)
-        
-        pygame.quit()
+        try:
+            while self.running:
+                self.handle_events()
+                self.update()
+                self.render()
+                self.clock.tick(fps)
+        finally:
+            # Cleanup (NEW)
+            if self.analysis_logger:
+                logger.info("Closing analysis logger...")
+                self.analysis_logger.close()
+            
+            pygame.quit()
+
 
 def main():
     """Entry point for the simulation."""
     simulation = Simulation()
     simulation.run()
+
 
 if __name__ == "__main__":
     main()
