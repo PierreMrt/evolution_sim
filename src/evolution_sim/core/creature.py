@@ -33,9 +33,9 @@ class Creature:
         
         max_energy = config.get('creatures.max_energy')
         
-        # CARNIVORES START WITH MORE ENERGY
+        # CARNIVORES START WITH SLIGHTLY LESS ENERGY
         if self.creature_type == 'carnivore':
-            self.energy = max_energy * 0.7  # 70% energy (was 50%)
+            self.energy = max_energy * 0.60  # CHANGED: was 0.7
         else:
             self.energy = max_energy * 0.5  # 50% energy
         
@@ -45,13 +45,13 @@ class Creature:
         # Random initial direction
         self.direction = random.uniform(0, 2 * math.pi)
         
-        # CARNIVORES ARE LARGER AND FASTER
+        # CARNIVORES ARE LARGER AND SLIGHTLY FASTER
         if self.creature_type == 'herbivore':
             self.radius = config.get('creatures.herbivore_radius')
             self.speed_multiplier = 1.0  # Normal speed
         else:
             self.radius = config.get('creatures.carnivore_radius')
-            self.speed_multiplier = 1.1  
+            self.speed_multiplier = 1.07  # CHANGED: was 1.1
         
         self.food_eaten = 0
         self.distance_traveled = 0.0
@@ -179,9 +179,9 @@ class Creature:
         self.x = self.x % world_width
         self.y = self.y % world_height
         
-        # CARNIVORES PAY LESS ENERGY FOR MOVEMENT (efficient hunters)
+        # CARNIVORES PAY SLIGHTLY MORE FOR MOVEMENT (more balanced)
         if self.creature_type == 'carnivore':
-            self.energy -= abs(speed) * 0.02 + abs(turn) * 0.015
+            self.energy -= abs(speed) * 0.023 + abs(turn) * 0.017  # CHANGED: was 0.02, 0.015
         else:
             self.energy -= abs(speed) * 0.03 + abs(turn) * 0.02
         

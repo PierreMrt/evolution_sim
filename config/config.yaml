@@ -20,15 +20,14 @@ display:
 world:
   width: 1220           # Matches viewport width
   height: 1080          # Matches viewport height
-  initial_plants: 250
-  plant_growth_rate: 0.10
-  plant_energy: 25
-  herbivores_energy_eaten: 30
-
+  initial_plants: 320   
+  plant_growth_rate: 0.18  
+  plant_energy: 20      
+  herbivores_energy_eaten: 24  
 
 creatures:
-  initial_herbivores: 15
-  initial_carnivores: 5
+  initial_herbivores: 18  # CHANGED: was 15
+  initial_carnivores: 4   # CHANGED: was 5
   max_energy: 100
   move_energy_cost: 0.1
   reproduction_energy_threshold: 65
@@ -37,15 +36,15 @@ creatures:
   carnivore_radius: 14
 
   # Herbivores
-  herbivores_reproduction_energy_threshold: 65
-  herbivores_reproduction_cost: 30
+  herbivores_reproduction_energy_threshold: 70  
+  herbivores_reproduction_cost: 40  
   herbivores_min_reproductive_age: 250
   herbivores_max_age_for_full_reproduction: 2000
   herbivores_senescence_period: 1000
 
   # Carnivores
-  carnivores_reproduction_energy_threshold: 80
-  carnivores_reproduction_cost: 40
+  carnivores_reproduction_energy_threshold: 85 
+  carnivores_reproduction_cost: 45  
   carnivores_min_reproductive_age: 300
   carnivores_max_age_for_full_reproduction: 1800
   carnivores_senescence_period: 800
@@ -68,4 +67,3 @@ evolution:
   elite_count: 2
   survival_rate: 0.5
   stagnation_limit: 15
-
