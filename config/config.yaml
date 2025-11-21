@@ -22,18 +22,33 @@ world:
   height: 1080          # Matches viewport height
   initial_plants: 250
   plant_growth_rate: 0.10
-  plant_energy: 30
+  plant_energy: 25
+  herbivores_energy_eaten: 30
 
 
 creatures:
   initial_herbivores: 15
-  initial_carnivores: 7
+  initial_carnivores: 5
   max_energy: 100
   move_energy_cost: 0.1
-  reproduction_energy_threshold: 80
-  reproduction_cost: 40
+  reproduction_energy_threshold: 65
+  reproduction_cost: 30
   herbivore_radius: 10
   carnivore_radius: 14
+
+  # Herbivores
+  herbivores_reproduction_energy_threshold: 65
+  herbivores_reproduction_cost: 30
+  herbivores_min_reproductive_age: 250
+  herbivores_max_age_for_full_reproduction: 2000
+  herbivores_senescence_period: 1000
+
+  # Carnivores
+  carnivores_reproduction_energy_threshold: 80
+  carnivores_reproduction_cost: 40
+  carnivores_min_reproductive_age: 300
+  carnivores_max_age_for_full_reproduction: 1800
+  carnivores_senescence_period: 800
 
 neural_network:
   input_neurons: 8
