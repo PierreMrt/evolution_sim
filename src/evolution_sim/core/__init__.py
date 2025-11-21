@@ -4,3 +4,4 @@ from .genome import Genome
 from .creature import Creature
 
 __all__ = ['Neuron', 'Connection', 'NeuralNetwork', 'Genome', 'Creature']
+

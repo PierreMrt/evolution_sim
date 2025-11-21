@@ -30,9 +30,9 @@ class NetworkVisualizer:
             return
         
         # Separate neurons by type
-        input_neurons = [n for n in network.neurons.values() if n.type == 'input']
-        hidden_neurons = [n for n in network.neurons.values() if n.type == 'hidden']
-        output_neurons = [n for n in network.neurons.values() if n.type == 'output']
+        input_neurons = [n for n in network.neurons.values() if n['type'] == 'input']
+        hidden_neurons = [n for n in network.neurons.values() if n['type'] == 'hidden']
+        output_neurons = [n for n in network.neurons.values() if n['type'] == 'output']
         
         # Calculate positions for neurons
         positions = self._calculate_positions(
@@ -67,7 +67,7 @@ class NetworkVisualizer:
             for i, neuron in enumerate(input_neurons):
                 pos_x = x + margin_x
                 pos_y = y + margin_y + i * spacing if len(input_neurons) > 1 else y + height / 2
-                positions[neuron.id] = (pos_x, pos_y)
+                positions[neuron['id']] = (pos_x, pos_y)
         
         # Hidden neurons - middle column(s)
         if hidden_neurons:
@@ -75,7 +75,7 @@ class NetworkVisualizer:
             for i, neuron in enumerate(hidden_neurons):
                 pos_x = x + margin_x + layer_width * 1.5
                 pos_y = y + margin_y + i * spacing if len(hidden_neurons) > 1 else y + height / 2
-                positions[neuron.id] = (pos_x, pos_y)
+                positions[neuron['id']] = (pos_x, pos_y)
         
         # Output neurons - right column
         if output_neurons:
@@ -83,7 +83,7 @@ class NetworkVisualizer:
             for i, neuron in enumerate(output_neurons):
                 pos_x = x + width - margin_x
                 pos_y = y + margin_y + i * spacing if len(output_neurons) > 1 else y + height / 2
-                positions[neuron.id] = (pos_x, pos_y)
+                positions[neuron['id']] = (pos_x, pos_y)
         
         return positions
     
@@ -91,17 +91,17 @@ class NetworkVisualizer:
                          positions: Dict[int, Tuple[float, float]]) -> None:
         """Draw all connections between neurons."""
         for conn in network.connections:
-            if not conn.enabled:
+            if not conn['enabled']:
                 continue
             
-            if conn.from_neuron not in positions or conn.to_neuron not in positions:
+            if conn['from'] not in positions or conn['to'] not in positions:
                 continue
             
-            from_pos = positions[conn.from_neuron]
-            to_pos = positions[conn.to_neuron]
+            from_pos = positions[conn['from']]
+            to_pos = positions[conn['to']]
             
             # Color based on weight (red for negative, green for positive)
-            weight = conn.weight
+            weight = conn['weight']
             if weight > 0:
                 # Positive weights in green
                 intensity = min(255, int(abs(weight) * 127))
@@ -120,16 +120,18 @@ class NetworkVisualizer:
                      positions: Dict[int, Tuple[float, float]], color: Tuple[int, int, int]) -> None:
         """Draw neuron circles with activation values."""
         for neuron in neurons:
-            if neuron.id not in positions:
+            if neuron['id'] not in positions:
                 continue
             
-            pos = positions[neuron.id]
+            pos = positions[neuron['id']]
             
             # Neuron size
             radius = 12
             
             # Activation intensity (brighter = more activated)
-            activation = neuron.value
+            # For the new dict-based structure, we don't store activation values
+            # So we use bias as a proxy or default to neutral
+            activation = 0.5  # Default neutral activation
             brightness = int(activation * 200) + 55  # Map [0,1] to [55,255]
             
             # Draw neuron circle
@@ -142,7 +144,7 @@ class NetworkVisualizer:
                 pygame.draw.circle(screen, overlay_color, (int(pos[0]), int(pos[1])), overlay_radius)
             
             # Draw neuron ID
-            id_text = self.small_font.render(str(neuron.id), True, (0, 0, 0))
+            id_text = self.small_font.render(str(neuron['id']), True, (0, 0, 0))
             text_rect = id_text.get_rect(center=pos)
             screen.blit(id_text, text_rect)
     

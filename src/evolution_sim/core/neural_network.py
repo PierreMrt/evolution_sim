@@ -1,50 +1,31 @@
 """Neural network implementation for creature brains."""
 import numpy as np
+import numba
 import random
 from typing import List, Dict
 
+
+# Backward compatibility wrappers for old Neuron and Connection classes
 class Neuron:
-    """Individual neuron in the neural network."""
+    """Backward compatibility wrapper for neuron dict structure."""
     
     def __init__(self, neuron_id: int, neuron_type: str):
-        """
-        Initialize a neuron.
-        
-        Args:
-            neuron_id: Unique identifier for the neuron
-            neuron_type: Type of neuron ('input', 'hidden', 'output')
-        """
+        """Initialize a neuron wrapper."""
         self.id = neuron_id
         self.type = neuron_type
         self.value = 0.0
         self.bias = random.uniform(-2, 2)
     
     def activate(self, x: float) -> float:
-        """
-        Apply sigmoid activation function.
-        
-        Args:
-            x: Input value
-            
-        Returns:
-            Activated output value
-        """
+        """Apply sigmoid activation function."""
         return 1 / (1 + np.exp(-max(-20, min(20, x))))
 
 
 class Connection:
-    """Connection between two neurons."""
+    """Backward compatibility wrapper for connection dict structure."""
     
     def __init__(self, from_neuron: int, to_neuron: int, weight: float, enabled: bool = True):
-        """
-        Initialize a connection.
-        
-        Args:
-            from_neuron: Source neuron ID
-            to_neuron: Destination neuron ID
-            weight: Connection weight
-            enabled: Whether connection is active
-        """
+        """Initialize a connection wrapper."""
         self.from_neuron = from_neuron
         self.to_neuron = to_neuron
         self.weight = weight
@@ -52,107 +33,167 @@ class Connection:
         self.innovation = (from_neuron, to_neuron)
 
 
+@numba.njit(cache=True, fastmath=True)
+def sigmoid(x: float) -> float:
+    """
+    Sigmoid activation with clipping to avoid overflow.
+    """
+    x = max(-20.0, min(20.0, x))
+    return 1.0 / (1.0 + np.exp(-x))
+
+
+@numba.njit(cache=True, fastmath=True)
+def forward_pass(
+    inputs: np.ndarray,
+    neuron_biases: np.ndarray,
+    conn_from: np.ndarray,
+    conn_to: np.ndarray,
+    conn_weights: np.ndarray,
+    conn_enabled: np.ndarray,
+    neuron_types: np.ndarray,
+    n_inputs: int,
+    n_outputs: int
+) -> np.ndarray:
+    """
+    Numba-accelerated feedforward inference.
+    neuron_types: 0=input, 1=hidden, 2=output.
+    All arrays must be contiguous, shape-documented.
+    - neuron_biases: (n_total,)
+    - conn_from, conn_to: (n_connections,)
+    - conn_weights, conn_enabled: (n_connections,)
+    - neuron_types: (n_total,)
+    - inputs: (n_inputs,)
+    """
+    n_total = neuron_types.shape[0]
+    neuron_values = np.zeros(n_total, dtype=np.float32)
+    # Set input neurons
+    for i in range(n_inputs):
+        neuron_values[i] = inputs[i]
+    # Process all non-inputs in order (assuming correct topological order)
+    for i in range(n_inputs, n_total):
+        acc = neuron_biases[i]
+        for j in range(conn_from.shape[0]):
+            if conn_enabled[j] and conn_to[j] == i:
+                acc += neuron_values[conn_from[j]] * conn_weights[j]
+        neuron_values[i] = sigmoid(acc)
+    # Collect output neurons
+    outputs = []
+    for i in range(n_total):
+        if neuron_types[i] == 2:
+            outputs.append(neuron_values[i])
+            if len(outputs) == n_outputs:
+                break
+    return np.array(outputs, dtype=np.float32)
+
+
 class NeuralNetwork:
-    """Feed-forward neural network with dynamic topology."""
-    
+    """
+    Numba-optimized feedforward network for evolutionary simulation.
+    Mutable topology for evolution; array-based inference for speed.
+    Neuron type: 0=input, 1=hidden, 2=output.
+    """
     def __init__(self):
         """Initialize an empty neural network."""
-        self.neurons: Dict[int, Neuron] = {}
-        self.connections: List[Connection] = []
-        self.next_neuron_id = 0
-        
+        self.neurons: Dict[int, Dict] = {}
+        self.connections: List[Dict] = []
+        self.next_neuron_id: int = 0
+
+        # Compiled NumPy arrays (initialized on first compile)
+        self._neuron_biases: np.ndarray = None
+        self._conn_from: np.ndarray = None
+        self._conn_to: np.ndarray = None
+        self._conn_weights: np.ndarray = None
+        self._conn_enabled: np.ndarray = None
+        self._neuron_types: np.ndarray = None
+        self._n_inputs: int = 0
+        self._n_outputs: int = 0
+        self._compiled: bool = False
+
     def add_neuron(self, neuron_type: str) -> int:
         """
-        Add a new neuron to the network.
-        
-        Args:
-            neuron_type: Type of neuron to add
-            
-        Returns:
-            ID of the newly created neuron
+        Add a neuron.
+        neuron_type: 'input', 'hidden', or 'output'
         """
         neuron_id = self.next_neuron_id
-        self.neurons[neuron_id] = Neuron(neuron_id, neuron_type)
+        type_idx = {'input': 0, 'hidden': 1, 'output': 2}[neuron_type]
+        self.neurons[neuron_id] = {
+            'id': neuron_id,
+            'type': neuron_type,
+            'type_idx': type_idx,
+            'bias': np.float32(random.uniform(-2, 2))
+        }
         self.next_neuron_id += 1
+        self._compiled = False
         return neuron_id
-    
-    def add_connection(self, from_id: int, to_id: int, weight: float) -> None:
+
+    def add_connection(self, from_id: int, to_id: int, weight: float, enabled: bool = True) -> None:
         """
-        Add a connection between two neurons.
-        
-        Args:
-            from_id: Source neuron ID
-            to_id: Destination neuron ID
-            weight: Connection weight
+        Add a connection if not a duplicate; allow dynamic topology.
         """
-        # Avoid duplicate connections
         for conn in self.connections:
-            if conn.from_neuron == from_id and conn.to_neuron == to_id:
+            if conn['from'] == from_id and conn['to'] == to_id:
                 return
-        self.connections.append(Connection(from_id, to_id, weight))
-    
+        self.connections.append({'from': from_id, 'to': to_id, 'weight': np.float32(weight), 'enabled': enabled})
+        self._compiled = False
+
+    def _compile_to_arrays(self) -> None:
+        """
+        Convert neurons/connections to contiguous NumPy arrays for Numba.
+        Call after any mutation or topology change.
+        """
+        n_total = len(self.neurons)
+        if n_total == 0:
+            self._compiled = True
+            return
+        ids = sorted(self.neurons.keys())
+        id_map = {nid: i for i, nid in enumerate(ids)}
+        biases = np.zeros(n_total, dtype=np.float32)
+        types = np.zeros(n_total, dtype=np.int32)
+        type_strs = [self.neurons[nid]['type'] for nid in ids]
+        for i, nid in enumerate(ids):
+            biases[i] = self.neurons[nid]['bias']
+            types[i] = self.neurons[nid]['type_idx']
+        # Connections to parallel arrays
+        conn_from, conn_to, conn_weights, conn_enabled = [], [], [], []
+        for conn in self.connections:
+            if conn['from'] in id_map and conn['to'] in id_map:
+                conn_from.append(id_map[conn['from']])
+                conn_to.append(id_map[conn['to']])
+                conn_weights.append(conn['weight'])
+                conn_enabled.append(conn['enabled'])
+        self._neuron_biases = np.ascontiguousarray(biases)
+        self._neuron_types = np.ascontiguousarray(types)
+        self._conn_from = np.ascontiguousarray(np.array(conn_from, dtype=np.int32))
+        self._conn_to = np.ascontiguousarray(np.array(conn_to, dtype=np.int32))
+        self._conn_weights = np.ascontiguousarray(np.array(conn_weights, dtype=np.float32))
+        self._conn_enabled = np.ascontiguousarray(np.array(conn_enabled, dtype=np.bool_))
+        self._n_inputs = type_strs.count('input')
+        self._n_outputs = type_strs.count('output')
+        self._compiled = True
+
     def forward(self, inputs: List[float]) -> List[float]:
         """
-        Perform forward pass through the network.
-        
-        Args:
-            inputs: Input values for the network
-            
-        Returns:
-            Output values from the network
+        Inference: calls Numba-accelerated forward_pass.
         """
-        # Reset neuron values
-        for neuron in self.neurons.values():
-            neuron.value = 0.0
-        
-        # Set input values
-        input_neurons = [n for n in self.neurons.values() if n.type == 'input']
-        for i, neuron in enumerate(input_neurons):
-            if i < len(inputs):
-                neuron.value = inputs[i]
-        
-        # Process hidden neurons
-        hidden_neurons = [n for n in self.neurons.values() if n.type == 'hidden']
-        for hidden in hidden_neurons:
-            incoming_sum = hidden.bias
-            for conn in self.connections:
-                if conn.to_neuron == hidden.id and conn.enabled:
-                    if conn.from_neuron in self.neurons:
-                        incoming_sum += self.neurons[conn.from_neuron].value * conn.weight
-            hidden.value = hidden.activate(incoming_sum)
-        
-        # Process output neurons
-        output_neurons = [n for n in self.neurons.values() if n.type == 'output']
-        outputs = []
-        for output in output_neurons:
-            incoming_sum = output.bias
-            for conn in self.connections:
-                if conn.to_neuron == output.id and conn.enabled:
-                    if conn.from_neuron in self.neurons:
-                        incoming_sum += self.neurons[conn.from_neuron].value * conn.weight
-            output.value = output.activate(incoming_sum)
-            outputs.append(output.value)
-        
-        return outputs
-    
-    def copy(self) -> 'NeuralNetwork':
+        if not self._compiled:
+            self._compile_to_arrays()
+        arr_inputs = np.zeros(self._n_inputs, dtype=np.float32)
+        for i in range(min(len(inputs), self._n_inputs)):
+            arr_inputs[i] = np.float32(inputs[i])
+        output = forward_pass(
+            arr_inputs, self._neuron_biases, self._conn_from, self._conn_to,
+            self._conn_weights, self._conn_enabled, self._neuron_types,
+            self._n_inputs, self._n_outputs
+        )
+        return output.tolist()
+
+    def copy(self) -> "NeuralNetwork":
         """
-        Create a deep copy of the network.
-        
-        Returns:
-            New NeuralNetwork instance with copied structure
+        Deep copy supporting arrays and dicts.
         """
         new_net = NeuralNetwork()
         new_net.next_neuron_id = self.next_neuron_id
-        
-        for nid, neuron in self.neurons.items():
-            new_neuron = Neuron(neuron.id, neuron.type)
-            new_neuron.bias = neuron.bias
-            new_net.neurons[nid] = new_neuron
-        
-        for conn in self.connections:
-            new_net.connections.append(
-                Connection(conn.from_neuron, conn.to_neuron, conn.weight, conn.enabled)
-            )
-        
+        new_net.neurons = {nid: dict(neuron) for nid, neuron in self.neurons.items()}
+        new_net.connections = [dict(conn) for conn in self.connections]
+        new_net._compile_to_arrays()
         return new_net

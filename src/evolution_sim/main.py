@@ -19,6 +19,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def warmup_numba(environment):
+    """
+    Pre-compiles Numba neural logic before main simulation loop.
+    """
+    if environment.creatures:
+        brain = environment.creatures[0].brain
+        n_inputs = brain._n_inputs if hasattr(brain, "_n_inputs") else 8  # Fallback if unknown
+        dummy_inputs = [0.0] * n_inputs
+        brain.forward(dummy_inputs)
+        logger.info("Numba compilation complete")
+
+
 class Simulation:
     """Main simulation controller."""
     
@@ -34,6 +46,9 @@ class Simulation:
         self.right_panel = RightPanel(self.renderer.screen)
         
         self.environment = Environment()
+        
+        # Warmup Numba compilation before simulation starts
+        warmup_numba(self.environment)
         
         # Initialize analysis logger (NEW)
         try:

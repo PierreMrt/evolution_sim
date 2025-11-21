@@ -66,6 +66,9 @@ class Genome:
                         weight = random.uniform(-1, 1)
                 
                 self.network.add_connection(i, o, weight)
+        
+        # Compile arrays after building initial network
+        self.network._compile_to_arrays()
     
     def mutate(self) -> None:
         """Apply various mutations to the genome."""
@@ -74,6 +77,8 @@ class Genome:
         self._mutate_add_neuron()
         self._mutate_remove_neuron()
         self._mutate_add_connection()
+        # Compile arrays after any mutation
+        self.network._compile_to_arrays()
     
     def _mutate_weights(self) -> None:
         """Mutate connection weights."""
@@ -83,10 +88,10 @@ class Genome:
         if random.random() < weight_mut_rate:
             for conn in self.network.connections:
                 if random.random() < 0.5:
-                    conn.weight += random.gauss(0, weight_mut_strength)
+                    conn['weight'] += random.gauss(0, weight_mut_strength)
                 else:
-                    conn.weight = random.uniform(-1, 1)
-                conn.weight = max(-2, min(2, conn.weight))
+                    conn['weight'] = random.uniform(-1, 1)
+                conn['weight'] = max(-2, min(2, conn['weight']))
     
     def _mutate_biases(self) -> None:
         """Mutate neuron biases."""
@@ -95,8 +100,8 @@ class Genome:
         
         for neuron in self.network.neurons.values():
             if random.random() < weight_mut_rate * 0.5:
-                neuron.bias += random.gauss(0, weight_mut_strength)
-                neuron.bias = max(-2, min(2, neuron.bias))
+                neuron['bias'] += random.gauss(0, weight_mut_strength)
+                neuron['bias'] = max(-2, min(2, neuron['bias']))
     
     def _mutate_add_neuron(self) -> None:
         """Add a new neuron by splitting an existing connection."""
@@ -106,24 +111,24 @@ class Genome:
         if random.random() < add_neuron_rate and len(self.network.neurons) < max_neurons:
             if self.network.connections:
                 conn = random.choice(self.network.connections)
-                conn.enabled = False
+                conn['enabled'] = False
                 
                 new_id = self.network.add_neuron('hidden')
-                self.network.add_connection(conn.from_neuron, new_id, 1.0)
-                self.network.add_connection(new_id, conn.to_neuron, conn.weight)
+                self.network.add_connection(conn['from'], new_id, 1.0)
+                self.network.add_connection(new_id, conn['to'], conn['weight'])
     
     def _mutate_remove_neuron(self) -> None:
         """Remove a random hidden neuron."""
         remove_neuron_rate = config.get('evolution.remove_neuron_rate')
         
         if random.random() < remove_neuron_rate:
-            hidden_neurons = [n.id for n in self.network.neurons.values() if n.type == 'hidden']
+            hidden_neurons = [n['id'] for n in self.network.neurons.values() if n['type'] == 'hidden']
             if hidden_neurons:
                 remove_id = random.choice(hidden_neurons)
                 del self.network.neurons[remove_id]
                 self.network.connections = [
                     c for c in self.network.connections 
-                    if c.from_neuron != remove_id and c.to_neuron != remove_id
+                    if c['from'] != remove_id and c['to'] != remove_id
                 ]
     
     def _mutate_add_connection(self) -> None:
@@ -148,4 +153,6 @@ class Genome:
         new_genome = Genome(self.creature_type)
         new_genome.network = self.network.copy()
         new_genome.species_id = self.species_id
+        # ensure arrays compiled
+        new_genome.network._compile_to_arrays()
         return new_genome
