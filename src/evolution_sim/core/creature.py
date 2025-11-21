@@ -74,20 +74,31 @@ class Creature:
         inputs = [1.0]  # Bias
         inputs.append(self.energy / max_energy)
         
-        # Find nearest food
-        nearest_food = self._find_nearest(
-            environment.plants if self.creature_type == 'herbivore' 
-            else environment.get_prey(self)
-        )
+        # Find nearest food using spatial grid when available
+        if environment is not None:
+            if self.creature_type == 'herbivore':
+                nearest_food = self._find_nearest(None, entity_type='plant', environment=environment)
+            else:
+                nearest_food = self._find_nearest(None, entity_type='herbivore', environment=environment)
+        else:
+            nearest_food = self._find_nearest(
+                environment.plants if self.creature_type == 'herbivore' 
+                else environment.get_prey(self)
+            )
         inputs.extend(nearest_food)
         
         # Find nearest threat
-        nearest_threat = self._find_nearest(environment.get_predators(self))
+        if environment is not None:
+            # For herbivores, predators are carnivores; for carnivores assume carnivore threats (could be none)
+            threat_type = 'carnivore' if self.creature_type == 'herbivore' else 'carnivore'
+            nearest_threat = self._find_nearest(None, entity_type=threat_type, environment=environment)
+        else:
+            nearest_threat = self._find_nearest(environment.get_predators(self))
         inputs.extend(nearest_threat)
         
         # Find nearest prey (for carnivores)
         if self.creature_type == 'carnivore':
-            nearest_prey = self._find_nearest(environment.get_prey(self))
+            nearest_prey = self._find_nearest(None, entity_type='herbivore', environment=environment)
             inputs.extend(nearest_prey)
         else:
             inputs.extend([0, 0])
@@ -96,36 +107,49 @@ class Creature:
         return inputs[:input_neurons]
     
 
-    def _find_nearest(self, entities):
-        """Find nearest entity from a list and return direction/distance"""
-        if not entities:
-            return [0.0, 0.0]  # Return normalized vector instead of tuple
-        
+    def _find_nearest(self, entities=None, entity_type: str = None, environment: 'Environment' = None):
+        """Find nearest entity from a list or from the environment spatial grid and return normalized direction.
+
+        Args:
+            entities: optional iterable of entities (list of (x,y) or Creature)
+            entity_type: when provided with environment, query this type from the grid ('plant','herbivore','carnivore')
+            environment: Environment instance with spatial_grid
+        """
+        # Acquire candidates
+        candidates = None
+        if environment is not None and entity_type is not None:
+            # Use spatial grid if available
+            try:
+                candidates = environment.spatial_grid.query_neighborhood(self.x, self.y, entity_type)
+            except Exception:
+                candidates = []
+        elif entities is not None:
+            candidates = entities
+
+        if not candidates:
+            return [0.0, 0.0]
+
         nearest = None
         min_dist = float('inf')
-        
-        for entity in entities:
-            # Properly extract coordinates
+        for entity in candidates:
             if hasattr(entity, 'x'):
                 ex, ey = entity.x, entity.y
             else:
                 ex, ey = entity[0], entity[1]
-            
-            dist = math.sqrt((self.x - ex)**2 + (self.y - ey)**2)
+
+            dist = math.hypot(self.x - ex, self.y - ey)
             if dist < min_dist:
                 min_dist = dist
                 nearest = (ex, ey)
-        
+
         if nearest is None:
             return [0.0, 0.0]
-        
-        # Return normalized direction vector
+
         dx = nearest[0] - self.x
         dy = nearest[1] - self.y
-        dist = math.sqrt(dx**2 + dy**2)
-        
+        dist = math.hypot(dx, dy)
         if dist > 0:
-            return [dx/dist, dy/dist]  # Normalized direction
+            return [dx / dist, dy / dist]
         return [0.0, 0.0]
     
 
@@ -200,11 +224,28 @@ class Creature:
         """Eat nearby plants."""
         plant_energy = config.get('world.plant_energy')
         max_energy = config.get('creatures.max_energy')
-        
-        for plant in environment.plants[:]:
-            dist = math.sqrt((plant[0] - self.x)**2 + (plant[1] - self.y)**2)
+        # Prefer querying local cell for plants if grid available
+        if hasattr(environment, 'spatial_grid'):
+            candidates = environment.spatial_grid.query_local_cell(self.x, self.y, 'plant')
+        else:
+            candidates = environment.plants[:]
+
+        for plant in list(candidates):
+            if hasattr(plant, 'x'):
+                px, py = plant.x, plant.y
+            else:
+                px, py = plant[0], plant[1]
+            dist = math.hypot(px - self.x, py - self.y)
             if dist < self.radius + 5:
-                environment.plants.remove(plant)
+                # Remove from environment plant list if present
+                try:
+                    environment.plants.remove((px, py))
+                except Exception:
+                    # maybe plant is an object; try to remove by identity
+                    try:
+                        environment.plants.remove(plant)
+                    except Exception:
+                        pass
                 self.energy = min(max_energy, self.energy + plant_energy)
                 self.food_eaten += 1
                 break
@@ -212,15 +253,21 @@ class Creature:
     def _attack_prey(self, environment: 'Environment') -> None:
         """Attack nearby herbivores."""
         max_energy = config.get('creatures.max_energy')
-        
-        for creature in environment.creatures:
-            if creature.creature_type == 'herbivore' and creature.alive:
-                dist = math.sqrt((creature.x - self.x)**2 + (creature.y - self.y)**2)
-                if dist < self.radius + creature.radius:
-                    creature.alive = False
-                    self.energy = min(max_energy, self.energy + 50)
-                    self.food_eaten += 1
-                    break
+        # Query local cell for potential prey when possible
+        if hasattr(environment, 'spatial_grid'):
+            candidates = environment.spatial_grid.query_local_cell(self.x, self.y, 'herbivore')
+        else:
+            candidates = [c for c in environment.creatures if c.creature_type == 'herbivore']
+
+        for creature in list(candidates):
+            if not getattr(creature, 'alive', True):
+                continue
+            dist = math.hypot(creature.x - self.x, creature.y - self.y)
+            if dist < self.radius + creature.radius:
+                creature.alive = False
+                self.energy = min(max_energy, self.energy + 50)
+                self.food_eaten += 1
+                break
     
     def update(self) -> None:
         """Update creature state."""

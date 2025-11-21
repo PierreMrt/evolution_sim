@@ -4,6 +4,7 @@ from typing import List, Tuple
 from ..core.creature import Creature
 from ..core.genome import Genome
 from ..config import config
+from ..spatial.spatial_hash_grid import SpatialHashGrid
 
 
 class Environment:
@@ -14,6 +15,11 @@ class Environment:
         self.creatures: List[Creature] = []
         self.plants: List[Tuple[float, float]] = []
         self.generation = 0
+        # Spatial grid for neighbor queries (built each frame)
+        cell_size = max(1, config.get('neural_network.vision_range') or 50)
+        self.spatial_grid = SpatialHashGrid(
+            config.get('world.width'), config.get('world.height'), cell_size
+        )
         self._initialize()
     
     def _initialize(self) -> None:
@@ -92,6 +98,21 @@ class Environment:
     
     def update(self) -> None:
         """Update all entities in the environment."""
+        # Rebuild spatial grid each frame for fast neighbor queries
+        try:
+            self.spatial_grid.clear()
+            # Insert plants
+            for plant in self.plants:
+                # plant is a (x,y) tuple
+                self.spatial_grid.insert(plant, plant[0], plant[1], 'plant')
+            # Insert creatures
+            for creature in self.creatures:
+                if creature.alive:
+                    self.spatial_grid.insert(creature, creature.x, creature.y, creature.creature_type)
+        except Exception:
+            # If spatial grid is not available for any reason, continue using full scans
+            pass
+
         # Update creatures
         for creature in self.creatures:
             if creature.alive:
