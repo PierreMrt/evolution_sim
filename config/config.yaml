@@ -50,9 +50,9 @@ creatures:
   carnivores_senescence_period: 800
 
 neural_network:
-  input_neurons: 8
+  input_neurons: 12
   output_neurons: 3
-  max_neurons: 20
+  max_neurons: 30
   vision_range: 150
 
 evolution:

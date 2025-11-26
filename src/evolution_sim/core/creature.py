@@ -57,6 +57,12 @@ class Creature:
         self.distance_traveled = 0.0
         self.eat_cooldown = 0
         
+        self.time_since_reproduction = 0
+        
+        self.food_history = []
+        self.food_history_window = 50
+        self.last_food_count = 0
+        
         # Use genome's network
         self.brain = genome.network
         
@@ -103,10 +109,60 @@ class Creature:
         else:
             inputs.extend([0, 0])
         
+        # New neuron inputs
+        inputs.append(self._sense_local_density(environment))
+        inputs.append(self._get_food_scarcity_signal())
+        inputs.append(self._get_reproduction_readiness())
+        
         input_neurons = config.get('neural_network.input_neurons')
         return inputs[:input_neurons]
     
 
+    def _sense_local_density(self, environment: 'Environment') -> float:
+        """Return normalized count of same-type creatures nearby (crowding/isolation)."""
+        sensing_radius = self.radius * 15
+        if hasattr(environment, 'spatial_grid'):
+            nearby = environment.spatial_grid.query_neighborhood(
+                self.x, self.y, self.creature_type
+            )
+        else:
+            nearby = [c for c in environment.creatures
+                      if c.creature_type == self.creature_type
+                      and c.id != self.id
+                      and getattr(c, 'alive', True)]
+        count = 0
+        for creature in nearby:
+            if hasattr(creature, 'x'):
+                dist = math.hypot(creature.x - self.x, creature.y - self.y)
+                if dist < sensing_radius:
+                    count += 1
+        return min(1.0, count / 20.0)
+    
+    def _update_food_history(self) -> None:
+        """Update rolling average of food eaten per step."""
+        food_gained_this_step = self.food_eaten - self.last_food_count
+        self.food_history.append(food_gained_this_step)
+        if len(self.food_history) > self.food_history_window:
+            self.food_history.pop(0)
+        self.last_food_count = self.food_eaten
+
+    def _get_food_scarcity_signal(self) -> float:
+        """Return normalized food scarcity signal based on recent consumption."""
+        if len(self.food_history) < 10:
+            return 0.5
+        avg_food_rate = sum(self.food_history) / len(self.food_history)
+        target_rate = 0.05 if self.creature_type == 'herbivore' else 0.02
+        scarcity = 1.0 - min(1.0, avg_food_rate / target_rate)
+        return scarcity
+    
+    def _get_reproduction_readiness(self) -> float:
+        """Return normalized reproduction readiness based on time since last reproduction."""
+        if self.creature_type == 'herbivore':
+            typical_interval = 300
+        else:
+            typical_interval = 400
+        return min(1.0, self.time_since_reproduction / typical_interval)
+    
     def _find_nearest(self, entities=None, entity_type: str = None, environment: 'Environment' = None):
         """Find nearest entity from a list or from the environment spatial grid and return normalized direction.
 
@@ -271,6 +327,9 @@ class Creature:
     
     def update(self) -> None:
         """Update creature state."""
+        self.time_since_reproduction += 1
+        self._update_food_history()
+        
         self.age += 1
         self.energy -= 0.03  # Base metabolism
         
@@ -320,6 +379,7 @@ class Creature:
             repro_cost = int(repro_cost * (1 + (self.age - max_age_for_full_reproduction) / senescence_period))
 
         self.energy -= repro_cost
+        self.time_since_reproduction = 0
         
         offspring_genome = self.genome.copy()
         offspring_genome.mutate()
