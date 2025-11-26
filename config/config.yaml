@@ -62,7 +62,7 @@ creatures:
 neural_network:
   input_neurons: 12
   output_neurons: 4  
-  max_neurons: 30
+  max_neurons: 50
   vision_range: 150
 
 evolution:
