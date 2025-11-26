@@ -57,6 +57,20 @@ class Creature:
         self.distance_traveled = 0.0
         self.eat_cooldown = 0
         
+        self.time_since_reproduction = 0
+        
+        self.food_history = []
+        self.food_history_window = 50
+        self.last_food_count = 0
+        
+        # Migration control
+        self.migration_cooldown = 0
+        self.is_migrating = False
+        self.migration_target = None
+        
+        # Reproduction urge tracking
+        self.reproduction_desire = 0.0  # Store last output value
+        
         # Use genome's network
         self.brain = genome.network
         
@@ -103,10 +117,60 @@ class Creature:
         else:
             inputs.extend([0, 0])
         
+        # New neuron inputs
+        inputs.append(self._sense_local_density(environment))
+        inputs.append(self._get_food_scarcity_signal())
+        inputs.append(self._get_reproduction_readiness())
+        
         input_neurons = config.get('neural_network.input_neurons')
         return inputs[:input_neurons]
     
 
+    def _sense_local_density(self, environment: 'Environment') -> float:
+        """Return normalized count of same-type creatures nearby (crowding/isolation)."""
+        sensing_radius = self.radius * 15
+        if hasattr(environment, 'spatial_grid'):
+            nearby = environment.spatial_grid.query_neighborhood(
+                self.x, self.y, self.creature_type
+            )
+        else:
+            nearby = [c for c in environment.creatures
+                      if c.creature_type == self.creature_type
+                      and c.id != self.id
+                      and getattr(c, 'alive', True)]
+        count = 0
+        for creature in nearby:
+            if hasattr(creature, 'x'):
+                dist = math.hypot(creature.x - self.x, creature.y - self.y)
+                if dist < sensing_radius:
+                    count += 1
+        return min(1.0, count / 20.0)
+    
+    def _update_food_history(self) -> None:
+        """Update rolling average of food eaten per step."""
+        food_gained_this_step = self.food_eaten - self.last_food_count
+        self.food_history.append(food_gained_this_step)
+        if len(self.food_history) > self.food_history_window:
+            self.food_history.pop(0)
+        self.last_food_count = self.food_eaten
+
+    def _get_food_scarcity_signal(self) -> float:
+        """Return normalized food scarcity signal based on recent consumption."""
+        if len(self.food_history) < 10:
+            return 0.5
+        avg_food_rate = sum(self.food_history) / len(self.food_history)
+        target_rate = 0.05 if self.creature_type == 'herbivore' else 0.02
+        scarcity = 1.0 - min(1.0, avg_food_rate / target_rate)
+        return scarcity
+    
+    def _get_reproduction_readiness(self) -> float:
+        """Return normalized reproduction readiness based on time since last reproduction."""
+        if self.creature_type == 'herbivore':
+            typical_interval = 300
+        else:
+            typical_interval = 400
+        return min(1.0, self.time_since_reproduction / typical_interval)
+    
     def _find_nearest(self, entities=None, entity_type: str = None, environment: 'Environment' = None):
         """Find nearest entity from a list or from the environment spatial grid and return normalized direction.
 
@@ -158,9 +222,20 @@ class Creature:
         inputs = self.get_inputs(environment)
         outputs = self.brain.forward(inputs)
         
-        # Interpret outputs
+        # Output 0: Turn angle
         turn = outputs[0] * 0.2
+        
+        # Output 1: Movement speed
         base_speed = outputs[1] * 2.0
+        
+        # Output 2: Reproduction urge (continuous value 0-1)
+        self.reproduction_desire = max(0.0, min(1.0, outputs[2]))
+        
+        # Output 3: Migration trigger (continuous value 0-1)
+        migration_urge = max(0.0, min(1.0, outputs[3])) if len(outputs) > 3 else 0.0
+        
+        # Handle migration
+        self._handle_migration(migration_urge, environment)
         
         # Apply carnivore speed multiplier
         speed = base_speed * self.speed_multiplier
@@ -181,13 +256,105 @@ class Creature:
         
         # CARNIVORES PAY SLIGHTLY MORE FOR MOVEMENT (more balanced)
         if self.creature_type == 'carnivore':
-            self.energy -= abs(speed) * 0.023 + abs(turn) * 0.017  # CHANGED: was 0.02, 0.015
+            self.energy -= abs(speed) * 0.023 + abs(turn) * 0.017
         else:
             self.energy -= abs(speed) * 0.03 + abs(turn) * 0.02
         
         # Try to eat
         self.try_eat(environment)
 
+    
+    def _handle_migration(self, migration_urge: float, environment: 'Environment') -> None:
+        """
+        Handle long-distance migration based on neural output.
+        
+        Args:
+            migration_urge: Output value from neural network (0-1)
+            environment: The simulation environment
+        """
+        # Decay cooldown
+        if self.migration_cooldown > 0:
+            self.migration_cooldown -= 1
+            return
+        
+        # Migration threshold (can be made configurable)
+        migration_threshold = config.get('creatures.migration_threshold', 0.7)
+        
+        # Trigger migration if urge exceeds threshold
+        if migration_urge > migration_threshold and not self.is_migrating:
+            self._initiate_migration(environment)
+        
+        # Execute migration if active
+        if self.is_migrating:
+            self._execute_migration()
+
+    def _initiate_migration(self, environment: 'Environment') -> None:
+        """Start a migration event."""
+        world_width = config.get('world.width')
+        world_height = config.get('world.height')
+        
+        # Choose random distant target
+        migration_distance = random.uniform(200, 400)  # Configurable distance
+        angle = random.uniform(0, 2 * math.pi)
+        
+        target_x = self.x + migration_distance * math.cos(angle)
+        target_y = self.y + migration_distance * math.sin(angle)
+        
+        # Wrap coordinates
+        target_x = target_x % world_width
+        target_y = target_y % world_height
+        
+        self.migration_target = (target_x, target_y)
+        self.is_migrating = True
+        
+        # Energy cost for initiating migration
+        migration_cost = config.get('creatures.migration_energy_cost', 15)
+        self.energy -= migration_cost
+
+    def _execute_migration(self) -> None:
+        """Move toward migration target at increased speed."""
+        if self.migration_target is None:
+            self.is_migrating = False
+            return
+        
+        target_x, target_y = self.migration_target
+        
+        # Calculate direction to target
+        dx = target_x - self.x
+        dy = target_y - self.y
+        
+        # Handle world wrapping (shortest path)
+        world_width = config.get('world.width')
+        world_height = config.get('world.height')
+        
+        if abs(dx) > world_width / 2:
+            dx = dx - math.copysign(world_width, dx)
+        if abs(dy) > world_height / 2:
+            dy = dy - math.copysign(world_height, dy)
+        
+        distance = math.hypot(dx, dy)
+        
+        # Arrived at target or close enough
+        if distance < 20:
+            self.is_migrating = False
+            self.migration_target = None
+            self.migration_cooldown = config.get('creatures.migration_cooldown', 300)  # Prevent immediate re-migration
+            return
+        
+        # Move toward target with boosted speed
+        if distance > 0:
+            self.direction = math.atan2(dy, dx)
+            migration_speed = 3.0 * self.speed_multiplier  # Faster during migration
+            
+            move_x = (dx / distance) * migration_speed
+            move_y = (dy / distance) * migration_speed
+            
+            self.x += move_x
+            self.y += move_y
+            
+            # Wrap around edges
+            self.x = self.x % world_width
+            self.y = self.y % world_height
     
     def _move(self, dx: float, dy: float) -> None:
         """Move the creature and consume energy."""
@@ -271,6 +438,13 @@ class Creature:
     
     def update(self) -> None:
         """Update creature state."""
+        self.time_since_reproduction += 1
+        self._update_food_history()
+        
+        # Decay migration cooldown
+        if self.migration_cooldown > 0:
+            self.migration_cooldown -= 1
+        
         self.age += 1
         self.energy -= 0.03  # Base metabolism
         
@@ -286,18 +460,28 @@ class Creature:
     
     def can_reproduce(self) -> bool:
         """
-        Check if creature can reproduce.
+        Check if creature can reproduce based on thresholds AND neural urge.
         
         Returns:
-            True if creature has enough energy and age
+            True if creature meets all reproduction conditions
         """
+        # Basic energy and age requirements
         if self.creature_type == 'herbivore':
-            threshold = config.get('creatures.herbivores_reproduction_energy_threshold')
+            energy_threshold = config.get('creatures.herbivores_reproduction_energy_threshold')
             min_reproductive_age = config.get('creatures.herbivores_min_reproductive_age', 250)
         else:
-            threshold = config.get('creatures.carnivores_reproduction_energy_threshold')
+            energy_threshold = config.get('creatures.carnivores_reproduction_energy_threshold')
             min_reproductive_age = config.get('creatures.carnivores_min_reproductive_age', 300)
-        return self.energy > threshold and self.age > min_reproductive_age
+        
+        basic_requirements = self.energy > energy_threshold and self.age > min_reproductive_age
+        
+        if not basic_requirements:
+            return False
+        
+        # Neural control: check reproduction desire output
+        reproduction_threshold = config.get('creatures.reproduction_desire_threshold', 0.6)
+        
+        return self.reproduction_desire > reproduction_threshold
     
     def reproduce(self) -> 'Creature':
         """
@@ -320,6 +504,7 @@ class Creature:
             repro_cost = int(repro_cost * (1 + (self.age - max_age_for_full_reproduction) / senescence_period))
 
         self.energy -= repro_cost
+        self.time_since_reproduction = 0
         
         offspring_genome = self.genome.copy()
         offspring_genome.mutate()

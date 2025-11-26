@@ -26,8 +26,8 @@ world:
   herbivores_energy_eaten: 24  
 
 creatures:
-  initial_herbivores: 18  # CHANGED: was 15
-  initial_carnivores: 4   # CHANGED: was 5
+  initial_herbivores: 18  
+  initial_carnivores: 5
   max_energy: 100
   move_energy_cost: 0.1
   reproduction_energy_threshold: 65
@@ -39,20 +39,30 @@ creatures:
   herbivores_reproduction_energy_threshold: 70  
   herbivores_reproduction_cost: 40  
   herbivores_min_reproductive_age: 250
-  herbivores_max_age_for_full_reproduction: 2000
-  herbivores_senescence_period: 1000
+  herbivores_max_age_for_full_reproduction: 4000
+  herbivores_senescence_period: 2000
 
   # Carnivores
   carnivores_reproduction_energy_threshold: 85 
   carnivores_reproduction_cost: 45  
   carnivores_min_reproductive_age: 300
-  carnivores_max_age_for_full_reproduction: 1800
-  carnivores_senescence_period: 800
+  carnivores_max_age_for_full_reproduction: 3800
+  carnivores_senescence_period: 1800
+
+  # Migration parameters
+  migration_threshold: 0.7          # Neural output threshold to trigger migration
+  migration_energy_cost: 5         # Energy cost to initiate migration
+  migration_cooldown: 300           # Steps before can migrate again
+  migration_min_distance: 200       # Minimum migration distance
+  migration_max_distance: 400       # Maximum migration distance
+  
+  # Reproduction urge parameters
+  reproduction_desire_threshold: 0.6  # Neural output threshold to reproduce
 
 neural_network:
-  input_neurons: 8
-  output_neurons: 3
-  max_neurons: 20
+  input_neurons: 12
+  output_neurons: 4  
+  max_neurons: 30
   vision_range: 150
 
 evolution:
