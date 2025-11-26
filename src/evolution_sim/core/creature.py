@@ -33,9 +33,9 @@ class Creature:
         
         max_energy = config.get('creatures.max_energy')
         
-        # CARNIVORES START WITH MORE ENERGY
+        # CARNIVORES START WITH SLIGHTLY LESS ENERGY
         if self.creature_type == 'carnivore':
-            self.energy = max_energy * 0.7  # 70% energy (was 50%)
+            self.energy = max_energy * 0.60  # CHANGED: was 0.7
         else:
             self.energy = max_energy * 0.5  # 50% energy
         
@@ -45,13 +45,13 @@ class Creature:
         # Random initial direction
         self.direction = random.uniform(0, 2 * math.pi)
         
-        # CARNIVORES ARE LARGER AND FASTER
+        # CARNIVORES ARE LARGER AND SLIGHTLY FASTER
         if self.creature_type == 'herbivore':
             self.radius = config.get('creatures.herbivore_radius')
             self.speed_multiplier = 1.0  # Normal speed
         else:
             self.radius = config.get('creatures.carnivore_radius')
-            self.speed_multiplier = 1.2  
+            self.speed_multiplier = 1.07  # CHANGED: was 1.1
         
         self.food_eaten = 0
         self.distance_traveled = 0.0
@@ -179,9 +179,9 @@ class Creature:
         self.x = self.x % world_width
         self.y = self.y % world_height
         
-        # CARNIVORES PAY LESS ENERGY FOR MOVEMENT (efficient hunters)
+        # CARNIVORES PAY SLIGHTLY MORE FOR MOVEMENT (more balanced)
         if self.creature_type == 'carnivore':
-            self.energy -= abs(speed) * 0.02 + abs(turn) * 0.015
+            self.energy -= abs(speed) * 0.023 + abs(turn) * 0.017  # CHANGED: was 0.02, 0.015
         else:
             self.energy -= abs(speed) * 0.03 + abs(turn) * 0.02
         
@@ -265,7 +265,7 @@ class Creature:
             dist = math.hypot(creature.x - self.x, creature.y - self.y)
             if dist < self.radius + creature.radius:
                 creature.alive = False
-                self.energy = min(max_energy, self.energy + 50)
+                self.energy = min(max_energy, self.energy + config.get('world.herbivores_energy_eaten'))
                 self.food_eaten += 1
                 break
     
@@ -278,7 +278,11 @@ class Creature:
             self.alive = False
         
         # Calculate fitness
-        self.genome.fitness = self.food_eaten * 10 + self.age * 0.1
+        self.genome.fitness = (
+            0.3 * (self.food_eaten * 8 / max(1, self.distance_traveled * 0.015)) +
+            0.7 * ((self.age ** 0.5) * 4 + self.children_count * 18) +
+            - (len(self.genome.network.neurons) * 0.25)
+        )
     
     def can_reproduce(self) -> bool:
         """
@@ -287,8 +291,13 @@ class Creature:
         Returns:
             True if creature has enough energy and age
         """
-        threshold = config.get('creatures.reproduction_energy_threshold')
-        return self.energy > threshold and self.age > 100
+        if self.creature_type == 'herbivore':
+            threshold = config.get('creatures.herbivores_reproduction_energy_threshold')
+            min_reproductive_age = config.get('creatures.herbivores_min_reproductive_age', 250)
+        else:
+            threshold = config.get('creatures.carnivores_reproduction_energy_threshold')
+            min_reproductive_age = config.get('creatures.carnivores_min_reproductive_age', 300)
+        return self.energy > threshold and self.age > min_reproductive_age
     
     def reproduce(self) -> 'Creature':
         """
@@ -297,7 +306,19 @@ class Creature:
         Returns:
             New Creature instance (offspring)
         """
-        repro_cost = config.get('creatures.reproduction_cost')
+
+        if self.creature_type == 'herbivore':
+            repro_cost = config.get('creatures.herbivores_reproduction_cost')
+            max_age_for_full_reproduction = config.get('creatures.herbivores_max_age_for_reproduction', 2000)
+            senescence_period = config.get('creatures.herbivores_senescence_period', 1000)
+        else:            
+            repro_cost = config.get('creatures.carnivores_reproduction_cost')
+            max_age_for_full_reproduction = config.get('creatures.carnivores_max_age_for_reproduction', 1800)
+            senescence_period = config.get('creatures.carnivores_senescence_period', 800)
+
+        if self.age > max_age_for_full_reproduction:
+            repro_cost = int(repro_cost * (1 + (self.age - max_age_for_full_reproduction) / senescence_period))
+
         self.energy -= repro_cost
         
         offspring_genome = self.genome.copy()

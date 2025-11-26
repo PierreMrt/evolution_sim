@@ -51,7 +51,7 @@ class Environment:
         world_height = config.get('world.height')
         
         # 60% chance to spawn near existing plant (cluster)
-        if self.plants and random.random() < 0.6:
+        if self.plants and random.random() < 0.4:
             # Pick a random existing plant
             base_plant = random.choice(self.plants)
             # Spawn nearby (within 100 pixels)
@@ -143,29 +143,4 @@ class Environment:
         initial_plants = config.get('world.initial_plants')
         if random.random() < growth_rate and len(self.plants) < initial_plants * 2:
             self._spawn_plant()
-        
-        # Prevent extinction
-        self._prevent_extinction()
 
-    
-    def _prevent_extinction(self) -> None:
-        """Spawn new creatures if population is too low."""
-        herbivores = [c for c in self.creatures if c.creature_type == 'herbivore']
-        carnivores = [c for c in self.creatures if c.creature_type == 'carnivore']
-        
-        world_width = config.get('world.width')
-        world_height = config.get('world.height')
-        
-        if len(herbivores) < 2:
-            for _ in range(3):
-                genome = Genome('herbivore')
-                x = random.uniform(50, world_width - 50)
-                y = random.uniform(50, world_height - 50)
-                self.creatures.append(Creature(x, y, genome))
-        
-        if len(carnivores) < 2:
-            for _ in range(2):
-                genome = Genome('carnivore')
-                x = random.uniform(50, world_width - 50)
-                y = random.uniform(50, world_height - 50)
-                self.creatures.append(Creature(x, y, genome))
