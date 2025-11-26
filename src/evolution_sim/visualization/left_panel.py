@@ -2,12 +2,16 @@
 
 import pygame
 import numpy as np
+import logging
 from typing import TYPE_CHECKING
 from ..config import config
+from .ui import ToggleButton
 
 if TYPE_CHECKING:
     from ..environment.world import Environment
     from ..evolution.evolution_tracker import EvolutionTracker
+
+logger = logging.getLogger(__name__)
 
 class LeftPanel:
     """Displays population stats and all-time bests on the left side."""
@@ -23,6 +27,18 @@ class LeftPanel:
         self.panel_x = config.get('display.left_panel_x', 0)
         self.panel_width = config.get('display.left_panel_width', 350)
         self.panel_height = screen.get_height()
+        
+        # Add FOV toggle button
+        self.fov_toggle = ToggleButton(
+            x=self.panel_x + 20,
+            y=self.panel_height - 50,
+            size=20,
+            label="Show FOV",
+            initial_state=config.get('display.show_vision_cones', False),
+            callback=self._toggle_fov
+        )
+        
+        self.show_fov = self.fov_toggle.state
     
     def draw(self, environment: 'Environment', frame: int) -> None:
         """Draw left panel contents."""
@@ -70,6 +86,11 @@ class LeftPanel:
                             (self.panel_x + self.panel_width - 20, y_position), 1)
             y_position += 15
             self._draw_controls(y_position)
+        
+        # Update and draw FOV toggle
+        mouse_pos = pygame.mouse.get_pos()
+        self.fov_toggle.update(mouse_pos)
+        self.fov_toggle.draw(self.screen)
         
         # Border
         pygame.draw.line(self.screen, (100, 100, 100),
@@ -211,6 +232,15 @@ class LeftPanel:
             y += 18
         
         return y
+    
+    def _toggle_fov(self, state: bool) -> None:
+        """Callback for FOV toggle."""
+        self.show_fov = state
+        logger.info(f"Vision cones: {'ON' if state else 'OFF'}")
+    
+    def handle_event(self, event: pygame.event.Event) -> bool:
+        """Handle mouse clicks on the panel."""
+        return self.fov_toggle.handle_event(event)
     
     def _draw_controls(self, start_y: int) -> None:
         """Draw control instructions."""

@@ -30,13 +30,14 @@ class Renderer:
         # Create a surface for the world
         self.world_surface = pygame.Surface((self.world_width, self.world_height))
     
-    def draw(self, environment: 'Environment', selected_creature=None) -> None:
+    def draw(self, environment: 'Environment', selected_creature=None, show_vision: bool = True) -> None:
         """
         Render the current simulation state.
         
         Args:
             environment: The environment to render
             selected_creature: Currently selected creature
+            show_vision: Whether to display vision cones
         """
         # Clear main screen with dark background
         self.screen.fill((30, 30, 30))
@@ -44,7 +45,7 @@ class Renderer:
         # Draw world on separate surface
         self.world_surface.fill((20, 30, 20))  # Dark green background for world
         self._draw_plants(environment)
-        self._draw_creatures(environment, selected_creature)
+        self._draw_creatures(environment, selected_creature, show_vision)
         
         # Blit world surface to main screen
         self.screen.blit(self.world_surface, (self.world_x, self.world_y))
@@ -63,15 +64,15 @@ class Renderer:
                 3
             )
     
-    def _draw_creatures(self, environment: 'Environment', selected_creature=None) -> None:
+    def _draw_creatures(self, environment: 'Environment', selected_creature=None, show_vision: bool = True) -> None:
         """Draw all creatures with energy bars, vision cones, and direction indicators."""
         max_energy = config.get('creatures.max_energy')
-        show_vision = config.get('display.show_vision_cones', True)
         
         for creature in environment.creatures:
             if creature.alive:
                 # Draw vision cone first (behind creature)
-                if show_vision:
+                # Always show for selected creature, or if vision is toggled on
+                if show_vision or creature == selected_creature:
                     self._draw_vision_cone(creature)
                 
                 # Determine color

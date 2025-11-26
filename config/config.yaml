@@ -2,8 +2,8 @@ display:
   window_width: 1920    # Total window width
   window_height: 1080   # Total window height
   fps: 60
-  show_vision_cones: true  # Toggle vision cone visualization
-  vision_cone_alpha: 40  # Transparency (0-255, lower = more transparent)
+  show_vision_cones: false # Toggle vision cone visualization
+  vision_cone_alpha: 30  # Transparency (0-255, lower = more transparent)
   
   # Left panel (stats)
   left_panel_x: 0
@@ -28,8 +28,8 @@ world:
   herbivores_energy_eaten: 24  
 
 creatures:
-  initial_herbivores: 18  
-  initial_carnivores: 5
+  initial_herbivores: 20  
+  initial_carnivores: 8
   max_energy: 100
   move_energy_cost: 0.1
   reproduction_energy_threshold: 65

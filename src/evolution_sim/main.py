@@ -87,8 +87,11 @@ class Simulation:
             
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left click
-                    # Check right panel first
-                    if self.right_panel.handle_click(event.pos):
+                    # Check left panel first (FOV toggle)
+                    if self.left_panel.handle_event(event):
+                        continue
+                    # Check right panel
+                    elif self.right_panel.handle_click(event.pos):
                         self.selected_creature = self.right_panel.selected_creature
                     else:
                         # Try to select creature at mouse position
@@ -155,8 +158,11 @@ class Simulation:
     
     def render(self) -> None:
         """Render simulation."""
-        # Draw world in center
-        self.renderer.draw(self.environment, self.selected_creature)
+        # Get FOV state from left panel
+        show_fov = self.left_panel.show_fov
+        
+        # Draw world with FOV state
+        self.renderer.draw(self.environment, self.selected_creature, show_vision=show_fov)
         
         # Draw left panel
         self.left_panel.draw(self.environment, self.tracker.current_frame)
