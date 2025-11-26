@@ -50,8 +50,8 @@ class Environment:
         world_width = config.get('world.width')
         world_height = config.get('world.height')
         
-        # 60% chance to spawn near existing plant (cluster)
-        if self.plants and random.random() < 0.4:
+        # 70% chance to spawn near existing plant (cluster)
+        if self.plants and random.random() < 0.7:
             # Pick a random existing plant
             base_plant = random.choice(self.plants)
             # Spawn nearby (within 100 pixels)

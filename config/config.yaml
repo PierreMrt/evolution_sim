@@ -22,10 +22,10 @@ display:
 world:
   width: 1220           # Matches viewport width
   height: 1080          # Matches viewport height
-  initial_plants: 320   
-  plant_growth_rate: 0.18  
-  plant_energy: 20      
-  herbivores_energy_eaten: 24  
+  initial_plants: 500   
+  plant_growth_rate: 0.4  
+  plant_energy: 10      
+  herbivores_energy_eaten: 25 
 
 creatures:
   initial_herbivores: 20  
