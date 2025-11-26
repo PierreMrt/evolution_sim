@@ -172,7 +172,7 @@ class Creature:
         return min(1.0, self.time_since_reproduction / typical_interval)
     
     def _find_nearest(self, entities=None, entity_type: str = None, environment: 'Environment' = None):
-        """Find nearest entity from a list or from the environment spatial grid and return normalized direction.
+        """Find nearest entity within vision cone and return normalized direction.
 
         Args:
             entities: optional iterable of entities (list of (x,y) or Creature)
@@ -193,6 +193,10 @@ class Creature:
         if not candidates:
             return [0.0, 0.0]
 
+        # Vision parameters
+        vision_angle = math.radians(config.get('creatures.vision_angle', 120))
+        vision_range = config.get('creatures.vision_range', 150)
+        
         nearest = None
         min_dist = float('inf')
         for entity in candidates:
@@ -201,7 +205,22 @@ class Creature:
             else:
                 ex, ey = entity[0], entity[1]
 
-            dist = math.hypot(self.x - ex, self.y - ey)
+            dx = ex - self.x
+            dy = ey - self.y
+            dist = math.hypot(dx, dy)
+            
+            # Check if within vision range
+            if dist > vision_range:
+                continue
+            
+            # Check if within vision cone
+            if dist > 0:
+                angle_to_entity = math.atan2(dy, dx)
+                angle_diff = abs(((angle_to_entity - self.direction + math.pi) % (2 * math.pi)) - math.pi)
+                
+                if angle_diff > vision_angle / 2:
+                    continue  # Outside vision cone
+            
             if dist < min_dist:
                 min_dist = dist
                 nearest = (ex, ey)
