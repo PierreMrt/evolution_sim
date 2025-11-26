@@ -2,6 +2,8 @@ display:
   window_width: 1920    # Total window width
   window_height: 1080   # Total window height
   fps: 60
+  show_vision_cones: false # Toggle vision cone visualization
+  vision_cone_alpha: 30  # Transparency (0-255, lower = more transparent)
   
   # Left panel (stats)
   left_panel_x: 0
@@ -26,14 +28,18 @@ world:
   herbivores_energy_eaten: 24  
 
 creatures:
-  initial_herbivores: 18  
-  initial_carnivores: 5
+  initial_herbivores: 20  
+  initial_carnivores: 8
   max_energy: 100
   move_energy_cost: 0.1
   reproduction_energy_threshold: 65
   reproduction_cost: 30
   herbivore_radius: 10
   carnivore_radius: 14
+  
+  # Vision parameters
+  vision_angle: 120  # Vision cone in degrees (120 = front 120 degrees)
+  vision_range: 150  # Maximum vision distance
 
   # Herbivores
   herbivores_reproduction_energy_threshold: 70  
