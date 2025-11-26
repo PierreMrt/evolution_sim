@@ -24,6 +24,7 @@ A real-time evolutionary simulation where creatures with neural network brains e
 - [Project Structure](#project-structure)
 - [Controls](#controls)
 - [Advanced Usage](#advanced-usage)
+- [Data Analysis](#data-analysis)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -68,18 +69,12 @@ pip install -e .
 pip install -e ".[dev]"
 ```
 
-### Fix for Linux/NVIDIA Users
+### Fix for Linux/Wayland users
 
 If you encounter a segmentation fault on Linux with NVIDIA graphics:
 
 ```bash
-export SDL_VIDEODRIVER=x11
-```
-
-Or add this line at the top of your `~/.bashrc`:
-
-```bash
-echo 'export SDL_VIDEODRIVER=x11' >> ~/.bashrc
+SDL_VIDEODRIVER=wayland python -m evolution_sim
 ```
 
 ## 🎮 Quick Start
@@ -89,23 +84,29 @@ echo 'export SDL_VIDEODRIVER=x11' >> ~/.bashrc
 After installation, run the simulation with:
 
 ```bash
-evolution-sim
-```
-
-Or navigate to the source directory:
-
-```bash
-cd src/evolution_sim
-python main.py
+python -m evolution_sim
 ```
 
 ### What You'll See
 
-- **Green dots**: Plants (food for herbivores)
-- **Blue circles**: Herbivores (seek plants, avoid carnivores)
-- **Red circles**: Carnivores (hunt herbivores)
-- **Energy bars**: Green bars above creatures show their current energy level
-- **Statistics panel**: Real-time population counts and neural network complexity
+The simulation displays three main panels:
+
+- **Center World** (1220×1080): 
+  - **Green dots**: Plants (food for herbivores)
+  - **Blue circles**: Herbivores (seek plants, avoid carnivores)
+  - **Red circles**: Carnivores (hunt herbivores)
+  - **Energy bars**: Green bars above creatures show their current energy level
+
+- **Left Panel** (Statistics):
+  - Real-time population counts (herbivores, carnivores, plants)
+  - Species diversity information
+  - Average neural network complexity (neurons and connections)
+  - Population statistics and trends
+
+- **Right Panel** (Creature Inspector):
+  - Click on any creature to view its neural network visualization
+  - Shows creature properties: age, energy, fitness, generation
+  - Visual representation of neuron activations and connections
 
 ## 🧠 How It Works
 
@@ -113,41 +114,49 @@ python main.py
 
 Each creature possesses a neural network that receives sensory inputs and produces behavioral outputs:
 
-**Inputs** (8 neurons):
+**Inputs** (12 neurons):
 - Bias (constant 1.0)
-- Current energy level
+- Current energy level (normalized)
 - Direction to nearest food (x, y)
 - Direction to nearest threat (x, y)  
 - Direction to nearest prey (x, y)
+- Time since last reproduction (normalized)
+- Population density around creature
 
-**Outputs** (3 neurons):
+**Outputs** (4 neurons):
 - Movement in X direction
 - Movement in Y direction
 - Action trigger (eat/attack)
+- Migration trigger (long-distance movement)
 
 ### Evolution Process
 
 1. **Mutation**: Networks randomly mutate by:
    - Adjusting connection weights
-   - Adding new neurons
+   - Adding new neurons and connections
    - Removing neurons
-   - Creating new connections
    - Modifying neuron biases
 
-2. **Selection**: Creatures with higher fitness (food eaten, survival time) are more likely to reproduce
+2. **Selection**: Creatures with higher fitness (food eaten, survival time, reproduction success) are more likely to reproduce
 
 3. **Reproduction**: Successful creatures create offspring with mutated copies of their neural networks
+   - Minimum reproductive age prevents immature breeding
+   - Age-based senescence reduces reproduction capability in older creatures
 
-4. **Speciation**: Similar creatures are grouped into species to maintain diversity
+4. **Speciation**: Similar creatures are grouped into species using genetic distance to maintain diversity
+
+5. **Migration**: Creatures can evolve the ability to migrate long distances when environmental conditions change (controlled by 4th neural output)
 
 ### Ecosystem Dynamics
 
-- **Herbivores** consume plants to gain energy
-- **Carnivores** hunt herbivores for energy
-- **Plants** regenerate over time
-- **Energy** depletes through movement and metabolism
+- **Herbivores** consume plants to gain energy and avoid predators
+- **Carnivores** hunt herbivores for energy, with improved predatory capabilities
+- **Plants** regenerate over time based on growth rate
+- **Energy** depletes through movement and metabolism costs
 - **Death** occurs when energy reaches zero or from predation
-- **Reproduction** requires sufficient energy reserves
+- **Reproduction** requires sufficient energy reserves and must meet age requirements
+- **Senescence** reduces reproductive capacity in older creatures while maintaining lifespan
+- **Migration** allows creatures to escape resource-depleted areas and seek new opportunities
 
 ## ⚙️ Configuration
 
@@ -157,9 +166,23 @@ All simulation parameters can be adjusted in `config/config.yaml`:
 
 ```yaml
 display:
-  window_width: 1200
-  window_height: 800
+  window_width: 1920              # Total window width
+  window_height: 1080             # Total window height
   fps: 60
+  
+  # Left panel (statistics and population info)
+  left_panel_x: 0
+  left_panel_width: 350
+  
+  # Center viewport (world simulation)
+  world_x: 350          
+  world_y: 0
+  world_viewport_width: 1220      # Center simulation area
+  world_viewport_height: 1080
+  
+  # Right panel (selected creature neural network visualization)
+  right_panel_x: 1570
+  right_panel_width: 350
 ```
 
 ### Evolution Parameters
@@ -167,29 +190,64 @@ display:
 ```yaml
 evolution:
   mutation_rate: 0.3              # Probability of mutation
-  add_neuron_rate: 0.05           # Chance to add new neuron
+  add_neuron_rate: 0.10           # Chance to add new neuron
   remove_neuron_rate: 0.03        # Chance to remove neuron
+  add_connection_rate: 0.1        # Chance to add new connection
+  weight_mutation_rate: 0.8       # Chance to mutate weights
   weight_mutation_strength: 0.3   # Magnitude of weight changes
+  species_divergence_threshold: 3.0  # Genetic distance for speciation
+  tournament_size: 3              # Size of tournament selection
+  elite_count: 2                  # Top creatures preserved
+  survival_rate: 0.5              # Percent of population that survives
+  stagnation_limit: 15            # Generations before species extinction
 ```
 
 ### Population Settings
 
 ```yaml
 creatures:
-  initial_herbivores: 10
-  initial_carnivores: 5
+  initial_herbivores: 18          # Starting herbivore population
+  initial_carnivores: 5           # Starting carnivore population
   max_energy: 100
-  reproduction_energy_threshold: 70
+  move_energy_cost: 0.1           # Energy consumed per movement step
+  reproduction_energy_threshold: 65   # Min energy to reproduce
+  reproduction_cost: 30           # Energy lost when reproducing
+  herbivore_radius: 10            # Size of herbivores
+  carnivore_radius: 14            # Size of carnivores (larger)
+  
+  # Age-based reproduction constraints
+  herbivores_min_reproductive_age: 250     # Minimum age to reproduce
+  herbivores_max_age_for_full_reproduction: 4000  # Age cap for full reproduction
+  herbivores_senescence_period: 2000       # Post-reproductive lifespan
+  carnivores_min_reproductive_age: 300
+  carnivores_max_age_for_full_reproduction: 3800
+  carnivores_senescence_period: 1800
+  
+  # Migration parameters
+  migration_threshold: 0.7        # Neural output threshold for migration
+  migration_energy_cost: 5        # Energy cost to migrate
+  migration_cooldown: 300         # Steps between migrations
+  migration_min_distance: 200     # Minimum migration distance
+  migration_max_distance: 400     # Maximum migration distance
+  
+  # Reproduction urge
+  reproduction_desire_threshold: 0.6  # Neural output threshold to reproduce
+
+world:
+  initial_plants: 320             # Starting plant count
+  plant_growth_rate: 0.18         # Growth rate per step
+  plant_energy: 20                # Energy from eating a plant
+  herbivores_energy_eaten: 24     # Energy from hunting herbivore
 ```
 
 ### Neural Network Configuration
 
 ```yaml
 neural_network:
-  input_neurons: 8
-  output_neurons: 3
-  max_neurons: 20
-  vision_range: 150
+  input_neurons: 12               # Includes energy, food direction, threats, age
+  output_neurons: 4               # Movement X/Y, action, migration
+  max_neurons: 30                 # Maximum network complexity
+  vision_range: 150               # How far creatures can sense
 ```
 
 ## 📁 Project Structure
@@ -300,7 +358,34 @@ Run with coverage:
 pytest --cov=evolution_sim --cov-report=html
 ```
 
-## 📊 Performance Tips
+## 📊 Data Analysis
+
+The simulation now includes a comprehensive data collection and analysis system:
+
+### Data Collection
+
+During simulation runs, detailed metrics are automatically collected:
+
+- **Global Metrics** (every 10 frames): Population counts, energy statistics, birth/death rates, neural complexity
+- **Creature Snapshots** (every 50 frames): Individual creature data including position, energy, age, fitness, and neural network stats
+
+Data is automatically saved to Parquet format for efficient storage and analysis.
+
+### Analysis Features
+
+Located in `src/evolution_sim/analysis/`:
+
+- **Storage Layer** (`infrastructure/`): Handles Parquet file I/O and data persistence
+- **Domain Models** (`domain/`): Metrics and creature snapshot data classes
+- **Analysis Facade** (`interfaces/`): High-level API for accessing simulation data
+- **Buffer Management** (`application/`): Efficient data collection and batching
+
+
+### Example Analysis Notebooks
+
+Check `simulation_data/analysis/bottleneck_analysis.ipynb` for example analysis workflows and visualizations.
+
+## 📈 Performance Tips
 
 - Reduce `fps` in config for faster evolution
 - Lower `window_width` and `window_height` for better performance
@@ -343,9 +428,9 @@ mypy src/
 
 ### Segmentation Fault (Linux)
 
-Set the SDL video driver:
+Start the simulation with:
 ```bash
-export SDL_VIDEODRIVER=x11
+SDL_VIDEODRIVER=wayland python -m evolution_sim
 ```
 
 ### Slow Performance
@@ -363,14 +448,19 @@ pip install -e .
 
 ## 🗺️ Roadmap
 
+- [x] Real-time statistics and visualization
+- [x] Multi-panel UI with creature inspector
+- [x] Data collection and analysis system
+- [x] Migration behavior
+- [x] Age-based senescence
+- [x] Advanced neural network features
 - [ ] Save/load simulation states
-- [ ] Export evolution data to CSV
-- [ ] Add more creature types (omnivores, scavengers)
-- [ ] Implement sexual reproduction (crossover)
-- [ ] Add environmental hazards
+- [ ] Sexual reproduction (crossover)
+- [ ] Environmental hazards
 - [ ] Web-based visualization
 - [ ] GPU acceleration for neural networks
 - [ ] Phylogenetic tree visualization
+- [ ] Extended creature types (omnivores, scavengers)
 
 ## 📚 References
 
@@ -387,7 +477,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👤 Author
 
-**Your Name**
 - GitHub: [@PierreMrt](https://github.com/PierreMrt)
 
 ## 🙏 Acknowledgments
